@@ -176,8 +176,8 @@ export function selectRadio(
  * @example
  * ```ts
  * const settings = { ..., fit_models: ["gpt-5"], ... };
- * const updated = selectAll("fit", ["gpt-5", "claude-4.1-opus", "gemini-3-pro-preview"], settings);
- * // Result: fit_models = ["gpt-5", "claude-4.1-opus", "gemini-3-pro-preview"]
+ * const updated = selectAll("fit", ["gpt-5", "claude-4.1-opus", "gemini-3.1-pro-preview"], settings);
+ * // Result: fit_models = ["gpt-5", "claude-4.1-opus", "gemini-3.1-pro-preview"]
  * ```
  */
 export function selectAll(

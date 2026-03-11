@@ -2,6 +2,8 @@
 
 Restailor is an open-source resume tailoring platform with a FastAPI backend, a Next.js frontend, PostgreSQL for persistence, Redis-backed background jobs, and optional LLM provider integrations.
 
+If you want to use Restailor without setting up the OSS stack yourself, use the hosted app at [restailor.com](https://restailor.com).
+
 The repository is structured for self-hosting and local development. Secrets are expected to come from your local environment or a secret manager such as Doppler, but the repo includes a single root `.env.example` that documents the variables needed to run the stack.
 
 ## Features
@@ -82,6 +84,27 @@ docker compose -f docker/docker-compose.dev.yml up --build
 ```
 
 This starts Postgres, Redis, the API, the worker, and the frontend using the root `.env` file.
+
+### Stripe Webhooks in Docker Dev
+
+This dev stack uses `cloudflared` to expose the local API (`http://api:8000`) through your Cloudflare tunnel.
+Point your Stripe webhook endpoint to that tunnel URL and keep `STRIPE_WEBHOOK_SECRET` in env/Doppler aligned with the Stripe endpoint secret.
+
+To verify tunnel logs:
+
+```bash
+docker compose -f docker/docker-compose.dev.yml logs -f cloudflared
+```
+
+Without webhook forwarding, Checkout can succeed but credits will not be applied.
+
+Doppler is optional. If you use Doppler, you can run the same command with injected secrets:
+
+```bash
+doppler run --project restailor --config dev -- docker compose -f docker/docker-compose.dev.yml up --build
+```
+
+If you do not use Doppler, copy `.env.example` to `.env` and use plain `docker compose`.
 
 ## Running Tests
 

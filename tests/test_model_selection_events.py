@@ -43,7 +43,7 @@ def test_sidebar_dispatches_correct_event_format(page_with_debug: Page):
     if sidebar_button.is_visible():
         sidebar_button.click()
     
-    # Select first available model (e.g., Claude Sonnet 4.5)
+    # Select first available model (e.g., Claude Sonnet 4.6)
     model_radio = page.locator("input[type='radio'][name='fit-model']").first
     if model_radio.is_visible():
         model_radio.click()
@@ -135,8 +135,8 @@ def test_model_selection_populates_label(page_with_debug: Page):
         sidebar_button.click()
         page.wait_for_timeout(300)
     
-    # Select Claude Sonnet 4.5 (first model in list)
-    model_radio = page.locator("input[type='radio'][value='claude-sonnet-4-5-20250929']").or_(
+    # Select Claude Sonnet 4.6 (first model in list)
+    model_radio = page.locator("input[type='radio'][value='claude-sonnet-4-6']").or_(
         page.locator("input[type='radio'][name='fit-model']").first
     )
     

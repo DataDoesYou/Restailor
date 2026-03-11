@@ -45,21 +45,21 @@ describe("modelSelectionAdapter", () => {
         ...createDefaultSettings(),
         last_single_fit: "gpt-5",
         last_single_tailor: "claude-4.1-opus",
-        last_single_judge: "gemini-3-pro-preview",
+        last_single_judge: "gemini-3.1-pro-preview",
       };
 
       const result = enterMulti(settings);
 
       expect(result.fit_models).toEqual(["gpt-5"]);
       expect(result.tailor_models).toEqual(["claude-4.1-opus"]);
-      expect(result.judge_models).toEqual(["gemini-3-pro-preview"]);
+      expect(result.judge_models).toEqual(["gemini-3.1-pro-preview"]);
     });
 
     it("should preserve existing arrays if not empty", () => {
       const settings: ModelSettings = {
         ...createDefaultSettings(),
         fit_models: ["gpt-5", "claude-4.1-opus"],
-        tailor_models: ["gemini-3-pro-preview"],
+        tailor_models: ["gemini-3.1-pro-preview"],
         judge_models: [],
         last_single_fit: "grok-4",
         last_single_tailor: "grok-4",
@@ -69,7 +69,7 @@ describe("modelSelectionAdapter", () => {
       const result = enterMulti(settings);
 
       expect(result.fit_models).toEqual(["gpt-5", "claude-4.1-opus"]);
-      expect(result.tailor_models).toEqual(["gemini-3-pro-preview"]);
+      expect(result.tailor_models).toEqual(["gemini-3.1-pro-preview"]);
       expect(result.judge_models).toEqual(["grok-4"]); // Seeded from last_single_judge
     });
 
@@ -108,14 +108,14 @@ describe("modelSelectionAdapter", () => {
         ...createDefaultSettings(),
         multi_model_enabled: true,
         fit_models: ["gpt-5", "claude-4.1-opus"],
-        tailor_models: ["gemini-3-pro-preview", "grok-4"],
+        tailor_models: ["gemini-3.1-pro-preview", "grok-4"],
         judge_models: ["gpt-5"],
       };
 
       const result = leaveMulti(settings);
 
       expect(result.last_single_fit).toBe("gpt-5");
-      expect(result.last_single_tailor).toBe("gemini-3-pro-preview");
+      expect(result.last_single_tailor).toBe("gemini-3.1-pro-preview");
       expect(result.last_single_judge).toBe("gpt-5");
     });
 
@@ -128,14 +128,14 @@ describe("modelSelectionAdapter", () => {
         judge_models: [],
         last_single_fit: "gpt-5",
         last_single_tailor: "claude-4.1-opus",
-        last_single_judge: "gemini-3-pro-preview",
+        last_single_judge: "gemini-3.1-pro-preview",
       };
 
       const result = leaveMulti(settings);
 
       expect(result.last_single_fit).toBe("gpt-5");
       expect(result.last_single_tailor).toBe("claude-4.1-opus");
-      expect(result.last_single_judge).toBe("gemini-3-pro-preview");
+      expect(result.last_single_judge).toBe("gemini-3.1-pro-preview");
     });
 
     it("should not mutate original settings", () => {
@@ -182,8 +182,8 @@ describe("modelSelectionAdapter", () => {
       const withTailor = toggleCheckbox("tailor", "claude-4.1-opus", settings);
       expect(withTailor.tailor_models).toEqual(["claude-4.1-opus"]);
 
-      const withJudge = toggleCheckbox("judge", "gemini-3-pro-preview", settings);
-      expect(withJudge.judge_models).toEqual(["gemini-3-pro-preview"]);
+      const withJudge = toggleCheckbox("judge", "gemini-3.1-pro-preview", settings);
+      expect(withJudge.judge_models).toEqual(["gemini-3.1-pro-preview"]);
     });
 
     it("should not mutate original settings", () => {
@@ -224,8 +224,8 @@ describe("modelSelectionAdapter", () => {
       const withTailor = selectRadio("tailor", "claude-4.1-opus", settings);
       expect(withTailor.last_single_tailor).toBe("claude-4.1-opus");
 
-      const withJudge = selectRadio("judge", "gemini-3-pro-preview", settings);
-      expect(withJudge.last_single_judge).toBe("gemini-3-pro-preview");
+      const withJudge = selectRadio("judge", "gemini-3.1-pro-preview", settings);
+      expect(withJudge.last_single_judge).toBe("gemini-3.1-pro-preview");
     });
 
     it("should not mutate original settings", () => {
@@ -244,7 +244,7 @@ describe("modelSelectionAdapter", () => {
         fit_models: ["gpt-5"],
       };
 
-      const allModels = ["gpt-5", "claude-4.1-opus", "gemini-3-pro-preview", "grok-4"];
+      const allModels = ["gpt-5", "claude-4.1-opus", "gemini-3.1-pro-preview", "grok-4"];
       const result = selectAll("fit", allModels, settings);
 
       expect(result.fit_models).toEqual(allModels);
@@ -295,7 +295,7 @@ describe("modelSelectionAdapter", () => {
         ...createDefaultSettings(),
         fit_models: ["gpt-5"],
         tailor_models: ["claude-4.1-opus"],
-        judge_models: ["gemini-3-pro-preview"],
+        judge_models: ["gemini-3.1-pro-preview"],
       };
 
       const withoutFit = clearAll("fit", settings);
@@ -326,7 +326,7 @@ describe("modelSelectionAdapter", () => {
         ...createDefaultSettings(),
         multi_model_enabled: true,
         fit_models: ["gpt-5", "claude-4.1-opus"],
-        last_single_fit: "gemini-3-pro-preview", // Should be ignored
+        last_single_fit: "gemini-3.1-pro-preview", // Should be ignored
       };
 
       const result = effectiveSelected("fit", settings);
@@ -365,12 +365,12 @@ describe("modelSelectionAdapter", () => {
         ...createDefaultSettings(),
         multi_model_enabled: true,
         fit_models: ["gpt-5"],
-        tailor_models: ["claude-4.1-opus", "gemini-3-pro-preview"],
+        tailor_models: ["claude-4.1-opus", "gemini-3.1-pro-preview"],
         judge_models: [],
       };
 
       expect(effectiveSelected("fit", settings)).toEqual(["gpt-5"]);
-      expect(effectiveSelected("tailor", settings)).toEqual(["claude-4.1-opus", "gemini-3-pro-preview"]);
+      expect(effectiveSelected("tailor", settings)).toEqual(["claude-4.1-opus", "gemini-3.1-pro-preview"]);
       expect(effectiveSelected("judge", settings)).toEqual([]);
     });
   });
@@ -414,7 +414,7 @@ describe("modelSelectionAdapter", () => {
       const settings: ModelSettings = {
         ...createDefaultSettings(),
         multi_model_enabled: true,
-        fit_models: ["gpt-5", "claude-4.1-opus", "gemini-3-pro-preview"],
+        fit_models: ["gpt-5", "claude-4.1-opus", "gemini-3.1-pro-preview"],
       };
 
       expect(getSelectedCount("fit", settings)).toBe(3);
@@ -528,11 +528,11 @@ describe("modelSelectionAdapter", () => {
 
       // Add more models
       settings = toggleCheckbox("fit", "claude-4.1-opus", settings);
-      settings = toggleCheckbox("fit", "gemini-3-pro-preview", settings);
+      settings = toggleCheckbox("fit", "gemini-3.1-pro-preview", settings);
       expect(effectiveSelected("fit", settings)).toEqual([
         "gpt-5",
         "claude-4.1-opus",
-        "gemini-3-pro-preview",
+        "gemini-3.1-pro-preview",
       ]);
 
       // Leave multi-model mode (captures first selection)
@@ -548,7 +548,7 @@ describe("modelSelectionAdapter", () => {
         multi_model_enabled: true,
       };
 
-      const allModels = ["gpt-5", "claude-4.1-opus", "gemini-3-pro-preview", "grok-4"];
+      const allModels = ["gpt-5", "claude-4.1-opus", "gemini-3.1-pro-preview", "grok-4"];
 
       // Select all
       settings = selectAll("tailor", allModels, settings);

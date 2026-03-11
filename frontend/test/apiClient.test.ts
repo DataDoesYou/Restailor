@@ -112,7 +112,7 @@ describe("apiClient - ModelSettings", () => {
       const updatedSettings: ModelSettings = {
         multi_model_enabled: false,
         fit_models: [],
-        tailor_models: ["gemini-3-pro-preview"],
+        tailor_models: ["gemini-3.1-pro-preview"],
         judge_models: [],
         last_single_fit: null,
         last_single_tailor: null,
@@ -131,7 +131,7 @@ describe("apiClient - ModelSettings", () => {
       await putUserSettings({
         multi_model_enabled: false,
         fit_models: [],
-        tailor_models: ["gemini-3-pro-preview"],
+        tailor_models: ["gemini-3.1-pro-preview"],
         judge_models: [],
         version: 1,
         expected_updated_at: oldTimestamp,

@@ -131,13 +131,13 @@ stop_sequences = ["\n### END OUTPUT\n"]
 
 [providers.openai]
 enabled = true
-model_tailor = "gpt-5.2"
-model_fit    = "gpt-5.2"
-model_judge  = "gpt-5.2"
+model_tailor = "gpt-5.4"
+model_fit    = "gpt-5.4"
+model_judge  = "gpt-5.4"
 # Additional models for allowlist (used by multi-model feature)
-model_tailor_alt = "gpt-5.2-chat-latest"
-model_fit_alt = "gpt-5.2-chat-latest"
-model_judge_alt = "gpt-5.2-chat-latest"
+model_tailor_alt = "gpt-5.3-chat-latest"
+model_fit_alt = "gpt-5.3-chat-latest"
+model_judge_alt = "gpt-5.3-chat-latest"
 model_tailor_alt2 = "gpt-4.1"
 model_fit_alt2 = "gpt-4.1"
 model_judge_alt2 = "gpt-4.1"
@@ -151,15 +151,15 @@ gpt5_disable_external_cancel = false    # enable cancel button for GPT-5 models
 
 [providers.anthropic]
 enabled = true
-model_tailor = "claude-opus-4-5-20251101"
-model_fit    = "claude-opus-4-5-20251101"
-model_judge  = "claude-opus-4-5-20251101"
+model_tailor = "claude-opus-4-6"
+model_fit    = "claude-opus-4-6"
+model_judge  = "claude-opus-4-6"
 # Additional models for allowlist
-model_tailor_alt = "claude-sonnet-4-5-20250929"
-model_fit_alt = "claude-sonnet-4-5-20250929"
-model_judge_alt = "claude-sonnet-4-5-20250929"
+model_tailor_alt = "claude-sonnet-4-6"
+model_fit_alt = "claude-sonnet-4-6"
+model_judge_alt = "claude-sonnet-4-6"
 
-## Extended thinking (Claude Opus 4.5+)
+## Extended thinking (Claude Opus 4.6+)
 ## budget_tokens: 1024 to 200000 (max thinking tokens per request)
 ## Start small and increase as needed; above 32k use batch processing
 ## Minimum: 1024 tokens
@@ -167,7 +167,7 @@ thinking_budget_tailor = 1024
 thinking_budget_fit    = 1024
 thinking_budget_judge  = 1024
 
-## Effort parameter (Claude Opus 4.5 only, beta)
+## Effort parameter (Claude Opus 4.6 only, beta)
 ## Values: "high" (default/max quality), "medium", "low" (faster/cheaper)
 effort_tailor = "high"
 effort_fit    = "high"
@@ -175,9 +175,9 @@ effort_judge  = "high"
 
 [providers.google]
 enabled = true
-model_tailor = "gemini-3-pro-preview"
-model_fit    = "gemini-3-pro-preview"
-model_judge  = "gemini-3-pro-preview"
+model_tailor = "gemini-3.1-pro-preview"
+model_fit    = "gemini-3.1-pro-preview"
+model_judge  = "gemini-3.1-pro-preview"
 # Additional models for allowlist
 model_tailor_alt = "gemini-3-flash-preview"
 model_fit_alt = "gemini-3-flash-preview"
@@ -433,7 +433,7 @@ first_byte_ms = 120000
 stream_stall_abort_ms = 45000
 
 # Preserve previous Gemini floors via config (no hardcoding in code)
-[timeouts_model.gemini."gemini-3-pro-preview"]
+[timeouts_model.gemini."gemini-3.1-pro-preview"]
 first_byte_ms = 60000
 stream_stall_abort_ms = 45000
 
@@ -442,20 +442,20 @@ first_byte_ms = 60000
 stream_stall_abort_ms = 45000
 
 [pricing]
-multiplier = 5.0
+multiplier = 2.0
 currency = "USD"
 
 [pricing.models]
-"claude-sonnet-4-5-20250929.input" = 3.00
-"claude-sonnet-4-5-20250929.output" = 15.00
-"claude-opus-4-5-20251101.input" = 5.00
-"claude-opus-4-5-20251101.output" = 25.00
+"claude-sonnet-4-6.input" = 3.00
+"claude-sonnet-4-6.output" = 15.00
+"claude-opus-4-6.input" = 5.00
+"claude-opus-4-6.output" = 25.00
 "claude-haiku-4-5-20251001.input" = 1.00
 "claude-haiku-4-5-20251001.output" = 5.00
 "gemini-3-flash-preview.input" = 0.50
 "gemini-3-flash-preview.output" = 3.00
-"gemini-3-pro-preview.input" = 1.25
-"gemini-3-pro-preview.output" = 10.00
+"gemini-3.1-pro-preview.input" = 2.00
+"gemini-3.1-pro-preview.output" = 12.00
 "gpt-4.1.input" = 2.00
 "gpt-4.1.output" = 8.00
 "gpt-5.input" = 1.25
@@ -466,10 +466,10 @@ currency = "USD"
 "gpt-5.1-instant.output" = 10.00
 "gpt-5.1-thinking.input" = 1.25
 "gpt-5.1-thinking.output" = 10.00
-"gpt-5.2.input" = 1.75
-"gpt-5.2.output" = 14.00
-"gpt-5.2-chat-latest.input" = 1.75
-"gpt-5.2-chat-latest.output" = 14.00
+"gpt-5.4.input" = 2.50
+"gpt-5.4.output" = 15.00
+"gpt-5.3-chat-latest.input" = 1.75
+"gpt-5.3-chat-latest.output" = 14.00
 "grok-4-1-fast-reasoning.input" = 0.20
 "grok-4-1-fast-reasoning.output" = 0.50
 "grok-4.input" = 3.00
@@ -477,15 +477,15 @@ currency = "USD"
 
 # Back-compat aliases from display names to provider model IDs.
 [pricing.aliases]
-"Claude Sonnet 4.5" = "claude-sonnet-4-5-20250929"
-"Claude Opus 4.5" = "claude-opus-4-5-20251101"
+"Claude Sonnet 4.6" = "claude-sonnet-4-6"
+"Claude Opus 4.6" = "claude-opus-4-6"
 "Claude Haiku 4.5" = "claude-haiku-4-5-20251001"
 "Gemini 3 Flash" = "gemini-3-flash-preview"
 "Gemini 2.5 Flash" = "gemini-3-flash-preview"
-"Gemini 3 Pro" = "gemini-3-pro-preview"
+"Gemini 3.1 Pro" = "gemini-3.1-pro-preview"
 "GPT-4.1" = "gpt-4.1"
 "GPT-5" = "gpt-5"
-"Grok 4.1 Fast" = "grok-4-1-fast-reasoning"
+"Grok 4.1 Fast Reasoning" = "grok-4-1-fast-reasoning"
 "Grok 4" = "grok-4"
 
 # --- Stripe (optional; disabled by default) ---

@@ -15,13 +15,13 @@ function getModelDisplayName(modelId: string): string {
   // Historical model mappings (preserve all legacy names)
   const historicalMap: Record<string, string> = {
     // Current models
-    'claude-sonnet-4-5-20250929': 'Claude Sonnet 4.5',
-    'claude-opus-4-5-20251101': 'Claude Opus 4.5',
+    'claude-sonnet-4-6': 'Claude Sonnet 4.6',
+    'claude-opus-4-6': 'Claude Opus 4.6',
     'gemini-2.5-flash': 'Gemini 2.5 Flash',
     'gemini-2.5-pro': 'Gemini 2.5 Pro',
-    'gpt-5.2-chat-latest': 'GPT-5.2 Instant',
-    'gpt-5.2': 'GPT-5.2 Thinking',
-    'grok-4-1-fast-reasoning': 'Grok 4.1 Fast',
+    'gpt-5.3-chat-latest': 'GPT-5.3 Chat',
+    'gpt-5.4': 'GPT-5.4',
+    'grok-4-1-fast-reasoning': 'Grok 4.1 Fast Reasoning',
     'grok-4-fast': 'Grok 4 Fast',
     'grok-4': 'Grok 4',
     

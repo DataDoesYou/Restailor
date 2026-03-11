@@ -21,10 +21,10 @@ def test_label_format():
             self.model_id = model_id
     
     model = ModelOption(
-        alias="Claude Sonnet 4.5",
+        alias="Claude Sonnet 4.6",
         provider_display="Anthropic",
         description="best agents",
-        model_id="claude-sonnet-4-5-20250929"
+        model_id="claude-sonnet-4-6"
     )
     
     # This is what SidebarModels should dispatch (full label format)
@@ -50,16 +50,16 @@ def test_event_detail_structure():
     
     # This is what SidebarModels dispatches
     correct_event_detail = {
-        'fitModelLabel': 'Claude Sonnet 4.5 — Anthropic (best agents)',
+        'fitModelLabel': 'Claude Sonnet 4.6 — Anthropic (best agents)',
         'tailorModelLabel': 'Grok 4.1 Fast — xAI (fast/cheap)',
-        'judgeLabel': 'GPT-5.2 Chat Latest — OpenAI'
+        'judgeLabel': 'GPT-5.3 Chat — OpenAI'
     }
     
     # This was the bug: dispatching aliases instead of full labels
     incorrect_event_detail = {
-        'fitModelLabel': 'Claude Sonnet 4.5',  # Just alias, missing provider and description
+        'fitModelLabel': 'Claude Sonnet 4.6',  # Just alias, missing provider and description
         'tailorModelLabel': 'Grok 4.1 Fast',
-        'judgeLabel': 'GPT-5.2 Chat Latest'
+        'judgeLabel': 'GPT-5.3 Chat'
     }
     
     print(f"\nCorrect event detail:")
@@ -96,17 +96,17 @@ def test_validation_error_format():
         },
         {
             'name': 'Model selected correctly',
-            'label': 'Claude Sonnet 4.5 — Anthropic (best agents)',
-            'meta': {'provider': 'anthropic', 'model': 'claude-sonnet-4-5-20250929'},
+            'label': 'Claude Sonnet 4.6 — Anthropic (best agents)',
+            'meta': {'provider': 'anthropic', 'model': 'claude-sonnet-4-6'},
             'multi': False,
-            'expected': '(label=Claude Sonnet 4.5 — Anthropic (best agents), meta=anthropic/claude-sonnet-4-5-20250929, multi=NO)'
+            'expected': '(label=Claude Sonnet 4.6 — Anthropic (best agents), meta=anthropic/claude-sonnet-4-6, multi=NO)'
         },
         {
             'name': 'BUG: Alias instead of full label',
-            'label': 'Claude Sonnet 4.5',  # Missing provider and description
+            'label': 'Claude Sonnet 4.6',  # Missing provider and description
             'meta': None,  # Meta won't match because DISPLAY_OPTIONS lookup fails
             'multi': False,
-            'expected': '(label=Claude Sonnet 4.5, meta=NULL, multi=NO)'
+            'expected': '(label=Claude Sonnet 4.6, meta=NULL, multi=NO)'
         }
     ]
     
@@ -145,23 +145,23 @@ def test_display_options_lookup():
     
     # Simulate DISPLAY_OPTIONS structure
     DISPLAY_OPTIONS = [
-        {'alias': 'Claude Sonnet 4.5', 'label': 'Claude Sonnet 4.5 — Anthropic (best agents)'},
-        {'alias': 'GPT-5.2 Chat Latest', 'label': 'GPT-5.2 Chat Latest — OpenAI (instant reasoning)'},
+        {'alias': 'Claude Sonnet 4.6', 'label': 'Claude Sonnet 4.6 — Anthropic (best agents)'},
+        {'alias': 'GPT-5.3 Chat', 'label': 'GPT-5.3 Chat — OpenAI (instant reasoning)'},
         {'alias': 'Grok 4.1 Fast', 'label': 'Grok 4.1 Fast — xAI (fast/cheap)'}
     ]
     
     # Test correct lookup (with full label)
-    full_label = 'Claude Sonnet 4.5 — Anthropic (best agents)'
+    full_label = 'Claude Sonnet 4.6 — Anthropic (best agents)'
     found = next((o for o in DISPLAY_OPTIONS if o['label'] == full_label), None)
     
     print(f"\nLookup with full label: {full_label}")
     print(f"  Found: {found}")
     assert found is not None, "Should find option with full label"
-    assert found['alias'] == 'Claude Sonnet 4.5', "Should get correct alias"
+    assert found['alias'] == 'Claude Sonnet 4.6', "Should get correct alias"
     print(f"  ✓ Lookup succeeded, alias: {found['alias']}")
     
     # Test incorrect lookup (with just alias) - THE BUG
-    just_alias = 'Claude Sonnet 4.5'
+    just_alias = 'Claude Sonnet 4.6'
     found_bug = next((o for o in DISPLAY_OPTIONS if o['label'] == just_alias), None)
     
     print(f"\nLookup with just alias (BUG): {just_alias}")

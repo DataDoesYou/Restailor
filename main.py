@@ -7262,7 +7262,8 @@ async def stripe_webhook(request: Request):
       - If mapping fails, 202 Accepted with no-op.
     """
     stripe_cfg = CONFIG.get("stripe", {}) if isinstance(CONFIG.get("stripe", {}), dict) else {}
-    secret = (stripe_cfg.get("webhook_secret") or "").strip()
+    secret = (os.getenv("STRIPE_WEBHOOK_SECRET") or stripe_cfg.get("webhook_secret") or "").strip()
+
     enabled = bool(stripe_cfg.get("enabled", False))
     if not enabled or not secret:
         return Response(
@@ -10027,73 +10028,6 @@ async def admin_decrypt_job(
     )
 
 
-# --- Admin: update pricing (multiplier and model rates) ---
-class AdminPricingUpdate(BaseModel):
-    multiplier: float | None = None
-    models: dict[str, dict[str, float | None]] | None = None
-
-
-@app.post("/admin/pricing")
-async def admin_update_pricing(
-    body: AdminPricingUpdate,
-    _admin: Annotated[User, Depends(auth_dep.require_admin)],
-    _step: Annotated[Any, Depends(require_recent_stepup(admin_only=True))],
-):
-    # Load current effective map
-    pm = load_price_map()
-    # Apply updates in-memory
-    if body.multiplier is not None:
-        try:
-            pm["multiplier"] = Decimal(str(body.multiplier))
-        except Exception:
-            raise HTTPException(status_code=400, detail="invalid_multiplier")
-    if isinstance(body.models, dict):
-        for name, rates in body.models.items():
-            cur = pm.setdefault("models", {}).setdefault(str(name), {})
-            if rates.get("input") is not None:
-                try:
-                    cur["input"] = Decimal(str(rates["input"]))
-                except Exception:
-                    raise HTTPException(status_code=400, detail=f"invalid_input_rate:{name}")
-            if rates.get("output") is not None:
-                try:
-                    cur["output"] = Decimal(str(rates["output"]))
-                except Exception:
-                    raise HTTPException(status_code=400, detail=f"invalid_output_rate:{name}")
-
-    # Persist to override file (JSON keeps simple numeric types)
-    override_path = os.getenv("PRICING_OVERRIDE_PATH") or str(Path("config") / "pricing_override.json")
-    try:
-        serial = {
-            "multiplier": float(pm.get("multiplier", 1)),
-            "models": {
-                k: {"input": float(v.get("input")), "output": float(v.get("output"))}
-                for k, v in (pm.get("models", {}) or {}).items()
-            },
-        }
-        Path(override_path).parent.mkdir(parents=True, exist_ok=True)
-        with open(override_path, "w", encoding="utf-8") as f:
-            json.dump(serial, f, indent=2)
-    except Exception as ex:
-        raise HTTPException(status_code=500, detail=f"persist_failed:{ex}")
-
-    # Invalidate cache by bumping the loader's cache entry
-    try:
-        from services import pricing as pricing_mod
-        pricing_mod._PRICE_CACHE.clear()  # type: ignore[attr-defined]
-    except Exception as ex:
-        logger.debug("pricing.override: cache clear failed: %s", ex)
-
-    # Return fresh effective map in API-friendly shapes
-    pm2 = load_price_map()
-    return {
-        "multiplier": float(pm2.get("multiplier", 1)),
-        "currency": pm2.get("currency", "USD"),
-        "models": {k: {"input": str(v.get("input")), "output": str(v.get("output"))} for k, v in (pm2.get("models", {}) or {}).items()},
-        "version": pm2.get("version", "v1"),
-    }
-
-
 # --- Admin: signup grant settings (runtime adjustable) ---
 class SignupGrantSettings(BaseModel):
     enable_signup_grant: bool = False  # Trial disabled by default; admin must explicitly enable
@@ -10255,6 +10189,17 @@ def _effective_signup_grant_settings(app_state) -> SignupGrantSettings:
                         eff[k] = v
         except Exception as ex:
             logger.debug("signup_grant: merge in-memory overrides failed: %s", ex)
+
+    # Always normalize trial model IDs to current allowlist IDs to avoid stale
+    # admin/runtime settings surfacing deprecated model IDs in UI and enforcement.
+    try:
+        tms = eff.get("trial_models")
+        if isinstance(tms, list):
+            from restailor.settings_schemas import apply_model_upgrades
+            eff["trial_models"] = [apply_model_upgrades(str(m)) for m in tms if str(m).strip()]
+    except Exception as ex:
+        logger.debug("signup_grant: normalize trial_models failed: %s", ex)
+
     return SignupGrantSettings(**eff)
 
 

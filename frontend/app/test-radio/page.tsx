@@ -213,7 +213,7 @@ export default function TestRadioPage() {
     if (trialModels === null) {
       // Restrict to first 3 models
       setTrialModels([
-        MODEL_OPTIONS[0].model_id, // Claude Sonnet 4.5
+        MODEL_OPTIONS[0].model_id, // Claude Sonnet 4.6
         MODEL_OPTIONS[2].model_id, // Gemini 2.5 Flash
         MODEL_OPTIONS[6].model_id, // Grok 4 Fast
       ]);

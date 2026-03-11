@@ -92,6 +92,7 @@ export default function BillingClient({ initialBalance = null, initialTrial = nu
 		}
 	}, [authPending, isLoggedIn]);
 
+
 	// Persist toggle and broadcast to other tabs/pages
 	useEffect(() => {
 		try {
@@ -167,7 +168,10 @@ export default function BillingClient({ initialBalance = null, initialTrial = nu
 			const r = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/billing/purchase-intent`, {
 				method: "POST",
 				credentials: "include",
-				headers: { "Content-Type": "application/json" },
+				headers: {
+					"Content-Type": "application/json",
+					"X-Requested-With": "XMLHttpRequest",
+				},
 				body: JSON.stringify({ amount_usd: usd }),
 			});
 			if (r.status === 501) {
@@ -340,7 +344,7 @@ export default function BillingClient({ initialBalance = null, initialTrial = nu
 				<div>
 					{trial.reason === "needs_2fa" ? (
 						<div>
-							<h2 className="text-xl font-semibold">Free trial</h2>
+							<h2 className="text-xl font-semibold">Free Trial</h2>
 							<p>Enable 2FA with an authenticator app or add a passkey to claim your free trial.</p>
 							{formatTrialModels(trial.trial_models) && (
 								<p className="text-sm text-slate-400 mt-2">
@@ -355,14 +359,14 @@ export default function BillingClient({ initialBalance = null, initialTrial = nu
 						</div>
 		    ) : trial.eligible ? (
 						<div>
-							<h2 className="text-xl font-semibold">Free trial</h2>
+							<h2 className="text-xl font-semibold">Free Trial</h2>
 							{formatTrialModels(trial.trial_models) && (
 								<p className="text-sm text-slate-400 mt-2">
 									Trial includes: {formatTrialModels(trial.trial_models)}
 									{trial.trial_duration_days && ` (${trial.trial_duration_days} days)`}
 								</p>
 							)}
-			    <button className="rounded bg-slate-700 px-3 py-2 mt-2" onClick={onClaimTrial}>Claim free trial</button>
+				    <button className="rounded bg-slate-700 px-3 py-2 mt-2" onClick={onClaimTrial}>Claim Free Trial</button>
 							<hr className="my-4 border-slate-700" />
 						</div>
 					) : null}
@@ -396,7 +400,7 @@ export default function BillingClient({ initialBalance = null, initialTrial = nu
 
 				{/* Purchase credits */}
 				<div className="md:col-span-2">
-					<h2 className="text-xl font-semibold">Purchase credits</h2>
+					<h2 className="text-xl font-semibold">Purchase Credits</h2>
 					<div className="grid grid-cols-3 md:grid-cols-5 gap-2 mt-3">
 						{amounts.map((amt) => (
 							<button key={amt} className="rounded bg-slate-700 px-3 py-2 hover:bg-slate-600 active:bg-slate-500" onClick={() => onPurchase(amt)}>${amt}</button>
@@ -449,12 +453,12 @@ export default function BillingClient({ initialBalance = null, initialTrial = nu
 					<div className="mt-2">
 						{userAvgs.length && myAvgTable ? (
 							<>
-								<div className="text-slate-400 text-sm">Your averages (last 100 per model)</div>
+								<div className="text-slate-400 text-sm">Your Averages (Last 100 per Model)</div>
 								<div className="overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0">
 									<table className="min-w-full text-sm">
 										<thead>
 											<tr>
-												<th className="text-left pr-4">request_type</th>
+												<th className="text-left pr-4">Request Type</th>
 												{myAvgTable.models.map((m) => (
 													<th key={m} className="text-left pr-4 whitespace-nowrap">{m}</th>
 												))}
@@ -474,7 +478,7 @@ export default function BillingClient({ initialBalance = null, initialTrial = nu
 								</div>
 							</>
 						) : (
-							<div className="text-slate-400 text-sm">No personal averages yet.</div>
+							<div className="text-slate-400 text-sm">No Personal Averages Yet.</div>
 						)}
 					</div>
 				)}
@@ -483,12 +487,12 @@ export default function BillingClient({ initialBalance = null, initialTrial = nu
 			{/* Global averages */}
 			{avgTable && (
 				<div>
-					<h2 className="text-xl font-semibold">Averages (global, last 100 per model)</h2>
+					<h2 className="text-xl font-semibold">Averages (Global, Last 100 per Model)</h2>
 					<div className="overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0">
 						<table className="min-w-full text-sm">
 							<thead>
 								<tr>
-									<th className="text-left pr-4">request_type</th>
+									<th className="text-left pr-4">Request Type</th>
 									{avgTable.models.map((m) => (
 										<th key={m} className="text-left pr-4 whitespace-nowrap">{m}</th>
 									))}
@@ -506,16 +510,15 @@ export default function BillingClient({ initialBalance = null, initialTrial = nu
 							</tbody>
 						</table>
 					</div>
-					{isAdmin && ((summary?.price_map && Object.keys(summary.price_map).length) || summary?.multiplier != null) ? (
+					{((summary?.price_map && Object.keys(summary.price_map).length) || summary?.multiplier != null) ? (
 						<hr className="my-4 border-slate-700" />
 					) : null}
 				</div>
 			)}
 
-			{/* Admin-only: price map and multiplier */}
-			{isAdmin && (
-				<div>
-					<h2 className="text-xl font-semibold">Current price map and multiplier (read-only)</h2>
+			{/* Price map */}
+			<div>
+					<h2 className="text-xl font-semibold">Current Price Map</h2>
 					{summary?.multiplier != null && (
 						<div className="text-slate-400 text-sm">Multiplier: x{String(summary.multiplier)}</div>
 					)}
@@ -524,9 +527,9 @@ export default function BillingClient({ initialBalance = null, initialTrial = nu
 							<table className="min-w-full text-sm">
 								<thead>
 									<tr>
-										<th className="text-left pr-4">model</th>
-										<th className="text-left pr-4 whitespace-nowrap">input (per 1M tokens)</th>
-										<th className="text-left pr-4 whitespace-nowrap">output (per 1M tokens)</th>
+										<th className="text-left pr-4">Model</th>
+										<th className="text-left pr-4 whitespace-nowrap">Input (per 1M tokens)</th>
+										<th className="text-left pr-4 whitespace-nowrap">Output (per 1M tokens)</th>
 									</tr>
 								</thead>
 								<tbody>
@@ -562,7 +565,6 @@ export default function BillingClient({ initialBalance = null, initialTrial = nu
 					) : null}
 					<div className="mt-2" />
 				</div>
-			)}
 		</div>
 	);
 }
