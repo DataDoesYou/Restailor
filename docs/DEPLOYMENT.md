@@ -795,6 +795,6 @@ To redirect alternate domains to primary domain:
 
 ---
 
-**For development setup, see [README.md](README.md).**  
+**For development setup, see [DEVELOPER_GUIDE.md](DEVELOPER_GUIDE.md).**  
 **For database details, see [DB.md](DB.md).**  
 **For archived detailed setup guides, see `docs/archive/` directory.**

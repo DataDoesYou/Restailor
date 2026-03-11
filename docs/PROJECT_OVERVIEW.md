@@ -362,18 +362,18 @@ docker build -f docker/next.Dockerfile --target prod -t restailor-frontend ./fro
 
 ### 🚀 Start Here
 - **README.md** - 30-minute onboarding guide
-- **PROJECT-OVERVIEW.md** - This file: complete system overview
+- **PROJECT_OVERVIEW.md** - This file: complete system overview
 - **QUICK-REFERENCE.md** - Common commands and quick fixes
 
 ### 📐 Architecture
-- **architecture.md** - System design, data flow, Single Source of Truth
+- **ARCHITECTURE.md** - System design, data flow, Single Source of Truth
 - **API.md** - Complete API endpoint reference
 - **DB.md** - Database schema, migrations, ERD
 - **Repo.md** - Repository structure and key modules
 
 ### 🔐 Security & Quality
 - **Security.md** - Auth, encryption, MFA, incident response
-- **Tests.md** - Testing strategy and mandatory procedures
+- **TESTS.md** - Testing strategy and mandatory procedures
 - **Privacy.md** - Data retention and privacy controls
 
 ### 💰 Features
@@ -563,12 +563,12 @@ restailor/
 │
 ├── docs/                             # Documentation
 │   ├── README.md                     # Quick start guide & index
-│   ├── PROJECT-OVERVIEW.md           # This file
-│   ├── architecture.md               # System design
+│   ├── PROJECT_OVERVIEW.md           # This file
+│   ├── ARCHITECTURE.md               # System design
 │   ├── API.md                        # API reference
 │   ├── DB.md                         # Database schema
 │   ├── Security.md                   # Security guide
-│   ├── Tests.md                      # Testing guide
+│   ├── TESTS.md                      # Testing guide
 │   ├── DEPLOYMENT.md                 # Deployment guide
 │   ├── QUICK-REFERENCE.md            # Command reference
 │   └── Contributing.md               # Contribution guide

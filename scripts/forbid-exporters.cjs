@@ -84,7 +84,7 @@ const IGNORED_FILES = [
   'FRONTEND_EXPORTER_REMOVAL.md', // Documentation
   'BACKEND_CSV_EXPORT_REMOVAL.md', // Documentation
   'pull_request_template.md', // PR template
-  'PROJECT-OVERVIEW.md', // Documentation with examples
+  'PROJECT_OVERVIEW.md', // Documentation with examples
   'QUICK-REFERENCE.md', // Documentation with examples
   'stageAnalyticsHelpers.ts', // Dev-only helpers (gated with NODE_ENV)
   'assertNoExports.ts', // Security guard (references patterns it checks for)
