@@ -30,8 +30,8 @@ def _quantize_2(d: Decimal) -> Decimal:
 def load_price_map(cfg: dict | None = None) -> dict:
     """Load pricing map from TOML config with TTL caching.
 
-    Pricing keys are the exact provider API model IDs (e.g., "gpt-5", "gemini-3-pro-preview",
-    "claude-sonnet-4-5-20250929"). We retain a small alias map for legacy/display names,
+    Pricing keys are the exact provider API model IDs (e.g., "gpt-5", "gemini-3.1-pro-preview",
+    "claude-sonnet-4-6"). We retain a small alias map for legacy/display names,
     but do not invent our own canonical keys.
 
     Returns a dict:

@@ -36,11 +36,11 @@ def test_multimodel_toggle_saves_correctly(client: TestClient):
     resp = client.put("/users/me/model-settings", json={
         "settings": {
             "multi_model_enabled": True,
-            "fit_models": ["gpt-5.2-chat-latest"],
-            "tailor_models": ["claude-sonnet-4.5"],
+            "fit_models": ["gpt-5.3-chat-latest"],
+            "tailor_models": ["claude-sonnet-4-6"],
             "judge_models": ["grok-4-1-fast-reasoning"],
-            "last_single_fit": "gpt-5.2-chat-latest",
-            "last_single_tailor": "claude-sonnet-4.5",
+            "last_single_fit": "gpt-5.3-chat-latest",
+            "last_single_tailor": "claude-sonnet-4-6",
             "last_single_judge": "grok-4-1-fast-reasoning"
         }
     }, headers=headers)
@@ -53,8 +53,8 @@ def test_multimodel_toggle_saves_correctly(client: TestClient):
     settings = data.get("settings", data)
     
     assert settings["multi_model_enabled"] is True
-    assert settings["fit_models"] == ["gpt-5.2-chat-latest"]
-    assert settings["tailor_models"] == ["claude-sonnet-4.5"]
+    assert settings["fit_models"] == ["gpt-5.3-chat-latest"]
+    assert settings["tailor_models"] == ["claude-sonnet-4-6"]
     assert settings["judge_models"] == ["grok-4-1-fast-reasoning"]
 
 
@@ -69,11 +69,11 @@ def test_multimodel_with_single_selection_no_colons(client: TestClient):
     resp = client.put("/users/me/model-settings", json={
         "settings": {
             "multi_model_enabled": True,
-            "fit_models": ["claude-sonnet-4.5"],  # Only 1 model
-            "tailor_models": ["gpt-5.2"],
+            "fit_models": ["claude-sonnet-4-6"],  # Only 1 model
+            "tailor_models": ["gpt-5.4"],
             "judge_models": ["grok-4-1-fast-reasoning"],
-            "last_single_fit": "gpt-5.2-chat-latest",
-            "last_single_tailor": "claude-sonnet-4.5",
+            "last_single_fit": "gpt-5.3-chat-latest",
+            "last_single_tailor": "claude-sonnet-4-6",
             "last_single_judge": "grok-4-1-fast-reasoning"
         }
     }, headers=headers)
@@ -103,11 +103,11 @@ def test_multimodel_with_multiple_selections(client: TestClient):
     resp = client.put("/users/me/model-settings", json={
         "settings": {
             "multi_model_enabled": True,
-            "fit_models": ["gpt-5.2-chat-latest", "claude-sonnet-4.5", "grok-4-1-fast-reasoning"],
-            "tailor_models": ["gpt-5.2", "claude-opus-4.5"],
+            "fit_models": ["gpt-5.3-chat-latest", "claude-sonnet-4-6", "grok-4-1-fast-reasoning"],
+            "tailor_models": ["gpt-5.4", "claude-opus-4-6"],
             "judge_models": ["grok-4-1-fast-reasoning"],
-            "last_single_fit": "gpt-5.2-chat-latest",
-            "last_single_tailor": "gpt-5.2",
+            "last_single_fit": "gpt-5.3-chat-latest",
+            "last_single_tailor": "gpt-5.4",
             "last_single_judge": "grok-4-1-fast-reasoning"
         }
     }, headers=headers)
@@ -138,8 +138,8 @@ def test_toggle_from_single_to_multi_mode(client: TestClient):
     resp = client.put("/users/me/model-settings", json={
         "settings": {
             "multi_model_enabled": False,
-            "last_single_fit": "gpt-5.2-chat-latest",
-            "last_single_tailor": "claude-sonnet-4.5",
+            "last_single_fit": "gpt-5.3-chat-latest",
+            "last_single_tailor": "claude-sonnet-4-6",
             "last_single_judge": "grok-4-1-fast-reasoning",
             "fit_models": [],
             "tailor_models": [],
@@ -152,11 +152,11 @@ def test_toggle_from_single_to_multi_mode(client: TestClient):
     resp = client.put("/users/me/model-settings", json={
         "settings": {
             "multi_model_enabled": True,
-            "fit_models": ["gpt-5.2-chat-latest"],  # Seeded from last_single_fit
-            "tailor_models": ["claude-sonnet-4.5"],
+            "fit_models": ["gpt-5.3-chat-latest"],  # Seeded from last_single_fit
+            "tailor_models": ["claude-sonnet-4-6"],
             "judge_models": ["grok-4-1-fast-reasoning"],
-            "last_single_fit": "gpt-5.2-chat-latest",
-            "last_single_tailor": "claude-sonnet-4.5",
+            "last_single_fit": "gpt-5.3-chat-latest",
+            "last_single_tailor": "claude-sonnet-4-6",
             "last_single_judge": "grok-4-1-fast-reasoning"
         }
     }, headers=headers)
@@ -168,8 +168,8 @@ def test_toggle_from_single_to_multi_mode(client: TestClient):
     settings = data.get("settings", data)
     
     assert settings["multi_model_enabled"] is True
-    assert "gpt-5.2-chat-latest" in settings["fit_models"]
-    assert "claude-sonnet-4.5" in settings["tailor_models"]
+    assert "gpt-5.3-chat-latest" in settings["fit_models"]
+    assert "claude-sonnet-4-6" in settings["tailor_models"]
     assert "grok-4-1-fast-reasoning" in settings["judge_models"]
 
 
@@ -184,12 +184,12 @@ def test_toggle_from_multi_to_single_mode(client: TestClient):
     resp = client.put("/users/me/model-settings", json={
         "settings": {
             "multi_model_enabled": True,
-            "fit_models": ["gpt-5.2-chat-latest", "claude-sonnet-4.5"],
+            "fit_models": ["gpt-5.3-chat-latest", "claude-sonnet-4-6"],
             "tailor_models": ["grok-4-1-fast-reasoning"],
-            "judge_models": ["claude-opus-4.5"],
-            "last_single_fit": "gpt-5.2-chat-latest",
+            "judge_models": ["claude-opus-4-6"],
+            "last_single_fit": "gpt-5.3-chat-latest",
             "last_single_tailor": "grok-4-1-fast-reasoning",
-            "last_single_judge": "claude-opus-4.5"
+            "last_single_judge": "claude-opus-4-6"
         }
     }, headers=headers)
     assert resp.status_code == 200
@@ -198,12 +198,12 @@ def test_toggle_from_multi_to_single_mode(client: TestClient):
     resp = client.put("/users/me/model-settings", json={
         "settings": {
             "multi_model_enabled": False,
-            "last_single_fit": "gpt-5.2-chat-latest",  # First from fit_models
+            "last_single_fit": "gpt-5.3-chat-latest",  # First from fit_models
             "last_single_tailor": "grok-4-1-fast-reasoning",  # First from tailor_models
-            "last_single_judge": "claude-opus-4.5",  # First from judge_models
-            "fit_models": ["gpt-5.2-chat-latest", "claude-sonnet-4.5"],  # Preserved
+            "last_single_judge": "claude-opus-4-6",  # First from judge_models
+            "fit_models": ["gpt-5.3-chat-latest", "claude-sonnet-4-6"],  # Preserved
             "tailor_models": ["grok-4-1-fast-reasoning"],
-            "judge_models": ["claude-opus-4.5"]
+            "judge_models": ["claude-opus-4-6"]
         }
     }, headers=headers)
     assert resp.status_code == 200
@@ -214,7 +214,7 @@ def test_toggle_from_multi_to_single_mode(client: TestClient):
     settings = data.get("settings", data)
     
     assert settings["multi_model_enabled"] is False
-    assert settings["last_single_fit"] == "gpt-5.2-chat-latest"
+    assert settings["last_single_fit"] == "gpt-5.3-chat-latest"
     assert settings["last_single_tailor"] == "grok-4-1-fast-reasoning"
-    assert settings["last_single_judge"] == "claude-opus-4.5"
+    assert settings["last_single_judge"] == "claude-opus-4-6"
 

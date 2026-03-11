@@ -319,7 +319,7 @@ def test_model_upgrade_map_empty():
 def test_apply_model_upgrades_no_mapping():
     """Test that models without upgrade mappings are returned unchanged."""
     # No upgrade defined for this model
-    original = "gpt-5.2-chat-latest"
+    original = "gpt-5.3-chat-latest"
     result = apply_model_upgrades(original)
     
     assert result == original
@@ -336,7 +336,7 @@ def test_apply_model_upgrades_with_mapping(monkeypatch):
     # Mock the upgrade map to test explicit upgrade logic
     def mock_upgrade_map():
         return {
-            "gpt-4.1": "gpt-5.2-chat-latest",
+            "gpt-4.1": "gpt-5.3-chat-latest",
         }
     
     # Mock get_allowed_models to say gpt-4.1 is NOT allowed
@@ -357,7 +357,7 @@ def test_apply_model_upgrades_with_mapping(monkeypatch):
     )
     
     # Test model_id upgrade via explicit mapping
-    assert apply_model_upgrades("gpt-4.1") == "gpt-5.2-chat-latest"
+    assert apply_model_upgrades("gpt-4.1") == "gpt-5.3-chat-latest"
     
     # Test valid model is NOT upgraded
     if allowed:

@@ -187,7 +187,7 @@ def get_allowed_models() -> set[str]:
     Extracts model IDs from all enabled providers in config/app.toml.
     
     Returns:
-        Set of valid model ID strings (e.g., {"gpt-5", "claude-4.1-opus", "gemini-3-pro-preview", "grok-4"})
+        Set of valid model ID strings (e.g., {"gpt-5", "claude-4.1-opus", "gemini-3.1-pro-preview", "grok-4"})
     """
     models: set[str] = set()
     
@@ -318,8 +318,13 @@ def get_model_upgrade_map() -> dict[str, str]:
     # Define explicit upgrade mappings for known deprecations
     # This section can be used for custom upgrade paths (e.g., GPT-4 -> GPT-5 Instant instead of Thinking)
     explicit_upgrades = {
-        "gpt-5.1-instant": "gpt-5.2-chat-latest",
-        "gpt-5.1-thinking": "gpt-5.2",
+        "gpt-5.1-instant": "gpt-5.3-chat-latest",
+        "gpt-5.1-thinking": "gpt-5.4",
+        "gpt-5.2-chat-latest": "gpt-5.3-chat-latest",
+        "gpt-5.2": "gpt-5.4",
+        "claude-sonnet-4-5-20250929": "claude-sonnet-4-6",
+        "claude-opus-4-5-20251101": "claude-opus-4-6",
+        "gemini-3-pro-preview": "gemini-3.1-pro-preview",
         "gemini-2.5-flash": "gemini-3-flash-preview",
     }
     
@@ -345,7 +350,7 @@ def apply_model_upgrades(model_id: str) -> str:
     This ensures users always have a valid model even when models are deprecated.
     
     Args:
-        model_id: Model identifier (e.g., "gpt-5.1-instant", "claude-sonnet-4-5-20250929")
+        model_id: Model identifier (e.g., "gpt-5.1-instant", "claude-sonnet-4-6")
         
     Returns:
         Valid model_id (upgraded if needed, or original if still valid)

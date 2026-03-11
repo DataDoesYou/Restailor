@@ -71,7 +71,7 @@ export function ModelSelector() {
   return (
     <div>
       <h3>Tailor Models</h3>
-      {["gpt-5", "claude-4.1-opus", "gemini-3-pro-preview"].map((modelId) => (
+      {["gpt-5", "claude-4.1-opus", "gemini-3.1-pro-preview"].map((modelId) => (
         <label key={modelId}>
           <input
             type="checkbox"
@@ -243,7 +243,7 @@ export function TypeSafeSettings() {
         <option value="">Select a model...</option>
         <option value="gpt-5">GPT-5</option>
         <option value="claude-4.1-opus">Claude 4.1 Opus</option>
-        <option value="gemini-3-pro-preview">Gemini 3 Pro</option>
+        <option value="gemini-3.1-pro-preview">Gemini 3.1 Pro</option>
       </select>
     </div>
   );

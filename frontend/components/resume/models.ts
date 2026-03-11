@@ -11,13 +11,13 @@ export type ModelOption = {
 };
 
 export const MODEL_OPTIONS: ModelOption[] = [
-  { alias: "Claude Sonnet 4.5", provider: "anthropic", provider_display: "Anthropic", model_id: "claude-sonnet-4-5-20250929", description: "best agents" },
-  { alias: "Claude Opus 4.5", provider: "anthropic", provider_display: "Anthropic", model_id: "claude-opus-4-5-20251101", description: "reasoning" },
+  { alias: "Claude Sonnet 4.6", provider: "anthropic", provider_display: "Anthropic", model_id: "claude-sonnet-4-6", description: "best agents", legacy_aliases: ["Claude Sonnet 4.5"], legacy_model_ids: ["claude-sonnet-4-5-20250929"] },
+  { alias: "Claude Opus 4.6", provider: "anthropic", provider_display: "Anthropic", model_id: "claude-opus-4-6", description: "reasoning", legacy_aliases: ["Claude Opus 4.5"], legacy_model_ids: ["claude-opus-4-5-20251101"] },
   { alias: "Gemini 3 Flash", provider: "gemini", provider_display: "Google", model_id: "gemini-3-flash-preview", description: "fast/cheap", legacy_aliases: ["Gemini 2.5 Flash"], legacy_model_ids: ["gemini-2.5-flash"] },
-  { alias: "Gemini 3 Pro", provider: "gemini", provider_display: "Google", model_id: "gemini-3-pro-preview", description: "best quality" },
-  { alias: "GPT-5.2 Instant", provider: "openai", provider_display: "OpenAI", model_id: "gpt-5.2-chat-latest", description: "instant reasoning", legacy_model_ids: ["gpt-5.1-instant"] },
-  { alias: "GPT-5.2 Thinking", provider: "openai", provider_display: "OpenAI", model_id: "gpt-5.2", description: "deep reasoning", legacy_model_ids: ["gpt-5.1-thinking"] },
-  { alias: "Grok 4.1 Fast", provider: "xai", provider_display: "xAI", model_id: "grok-4-1-fast-reasoning", description: "fast/cheap", legacy_aliases: ["Grok 4 Fast"], legacy_model_ids: ["grok-4-fast"] },
+  { alias: "Gemini 3.1 Pro", provider: "gemini", provider_display: "Google", model_id: "gemini-3.1-pro-preview", description: "best quality", legacy_aliases: ["Gemini 3 Pro"], legacy_model_ids: ["gemini-3-pro-preview"] },
+  { alias: "GPT-5.3 Chat", provider: "openai", provider_display: "OpenAI", model_id: "gpt-5.3-chat-latest", description: "instant reasoning", legacy_aliases: ["GPT-5.2 Instant"], legacy_model_ids: ["gpt-5.1-instant", "gpt-5.2-chat-latest"] },
+  { alias: "GPT-5.4", provider: "openai", provider_display: "OpenAI", model_id: "gpt-5.4", description: "deep reasoning", legacy_aliases: ["GPT-5.2 Thinking"], legacy_model_ids: ["gpt-5.1-thinking", "gpt-5.2"] },
+  { alias: "Grok 4.1 Fast Reasoning", provider: "xai", provider_display: "xAI", model_id: "grok-4-1-fast-reasoning", description: "fast/cheap", legacy_aliases: ["Grok 4 Fast"], legacy_model_ids: ["grok-4-fast"] },
   { alias: "Grok 4", provider: "xai", provider_display: "xAI", model_id: "grok-4", description: "latest" },
 ];
 
@@ -53,6 +53,9 @@ export const MODEL_REGISTRY: Record<string, { provider: string; model: string }>
 // Model ID registry for quick lookup
 export const MODEL_REGISTRY_BY_ID: Record<string, ModelOption> = MODEL_OPTIONS.reduce((acc, m) => {
   acc[m.model_id] = m;
+  m.legacy_model_ids?.forEach((legacyId) => {
+    acc[legacyId] = m;
+  });
   return acc;
 }, {} as Record<string, ModelOption>);
 

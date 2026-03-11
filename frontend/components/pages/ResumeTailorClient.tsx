@@ -916,13 +916,13 @@ export default function ResumeTailorClient({ initialLoggedIn, initialAuthVerifie
 
 	// Alias code mapping (shared with BenchmarkClient) for anonymized comparative judging
 	const CODE_MAP: Record<string,string> = useMemo(()=>({
-		"Claude Sonnet 4.5": "CS4.5",
-		"Claude Opus 4.5": "CO4.5",
+		"Claude Sonnet 4.6": "CS4.6",
+		"Claude Opus 4.6": "CO4.6",
 		"Gemini 2.5 Flash": "G2.5F",
-		"Gemini 2.5 Pro": "G2.5P",
+		"Gemini 3.1 Pro": "G3.1P",
 		"GPT-4.1": "G4.1",
 		"GPT-5": "G5",
-		"Grok 4 Fast": "Gr4F",
+		"Grok 4.1 Fast Reasoning": "Gr4.1FR",
 		"Grok 4": "Gr4",
 	}), []);
 	const aliasCode = useCallback((alias: string) => CODE_MAP[alias] || ("C" + Math.abs(alias.split('').reduce((a,c)=>a+c.charCodeAt(0),0)) % 10000), [CODE_MAP]);

@@ -1,7 +1,7 @@
-"""Test that GPT-5.2 Chat Latest vs GPT-5.2 modes track different token counts.
+"""Test that GPT-5.3 Chat vs GPT-5.2 modes track different token counts.
 
 This test verifies that:
-1. GPT-5.2 Chat Latest (reasoning_effort='none') generates fewer completion tokens
+1. GPT-5.3 Chat (reasoning_effort='none') generates fewer completion tokens
 2. GPT-5.2 (reasoning_effort='medium') generates MORE completion tokens (includes reasoning)
 3. The difference is captured in completion_tokens_real
 4. The cost difference is reflected in price_to_user_usd_real
@@ -40,7 +40,7 @@ def test_instant_vs_thinking_token_counts_differ(db_session: Session):
     
     pm = load_price_map()
     
-    # Simulate GPT-5.2 Chat Latest request: NO reasoning tokens
+    # Simulate GPT-5.3 Chat request: NO reasoning tokens
     # Example: 1000 prompt, 500 completion (pure visible output)
     instant_prompt = 1000
     instant_completion = 500
@@ -51,7 +51,7 @@ def test_instant_vs_thinking_token_counts_differ(db_session: Session):
         job_id="instant-test",
         request_type="tailor",
         provider="openai",
-        model="gpt-5.2-chat-latest",
+        model="gpt-5.3-chat-latest",
         prompt_tokens=instant_prompt,
         completion_tokens=instant_completion,
         price_map=pm,
@@ -73,7 +73,7 @@ def test_instant_vs_thinking_token_counts_differ(db_session: Session):
         job_id="thinking-test",
         request_type="tailor",
         provider="openai",
-        model="gpt-5.2",
+        model="gpt-5.4",
         prompt_tokens=thinking_prompt,
         completion_tokens=thinking_completion,
         price_map=pm,
@@ -100,10 +100,10 @@ def test_instant_vs_thinking_token_counts_differ(db_session: Session):
         "Thinking mode should generate MORE completion tokens than Instant (includes reasoning tokens)"
     
     # Calculate expected costs
-    instant_cost = quote_cost_usd(pm, "gpt-5.2-chat-latest", instant_prompt, instant_completion)
+    instant_cost = quote_cost_usd(pm, "gpt-5.3-chat-latest", instant_prompt, instant_completion)
     instant_price = apply_multiplier(instant_cost, Decimal(pm.get("multiplier", 1)))
     
-    thinking_cost = quote_cost_usd(pm, "gpt-5.2", thinking_prompt, thinking_completion)
+    thinking_cost = quote_cost_usd(pm, "gpt-5.4", thinking_prompt, thinking_completion)
     thinking_price = apply_multiplier(thinking_cost, Decimal(pm.get("multiplier", 1)))
     
     # Verify costs match expected
@@ -120,7 +120,7 @@ def test_instant_vs_thinking_token_counts_differ(db_session: Session):
     cost_diff = thinking_charge.price_to_user_usd_real - instant_charge.price_to_user_usd_real
     token_diff = thinking_charge.completion_tokens_real - instant_charge.completion_tokens_real
     
-    print(f"\n=== GPT-5.2 Chat Latest vs GPT-5.2 Token Tracking ===")
+    print(f"\n=== GPT-5.3 Chat vs GPT-5.2 Token Tracking ===")
     print(f"Chat Latest: {instant_prompt} prompt + {instant_completion} completion = ${instant_charge.price_to_user_usd_real}")
     print(f"GPT-5.2: {thinking_prompt} prompt + {thinking_completion} completion = ${thinking_charge.price_to_user_usd_real}")
     print(f"Difference: +{token_diff} tokens, +${cost_diff} cost")
@@ -154,7 +154,7 @@ def test_identical_requests_should_show_cost_difference(db_session: Session):
         job_id="identical-instant",
         request_type="tailor",
         provider="openai",
-        model="gpt-5.2-chat-latest",
+        model="gpt-5.3-chat-latest",
         prompt_tokens=prompt_tokens,
         completion_tokens=instant_completion,
         price_map=pm,
@@ -170,7 +170,7 @@ def test_identical_requests_should_show_cost_difference(db_session: Session):
         job_id="identical-thinking",
         request_type="tailor",
         provider="openai",
-        model="gpt-5.2",
+        model="gpt-5.4",
         prompt_tokens=prompt_tokens,
         completion_tokens=thinking_completion,
         price_map=pm,
@@ -209,8 +209,8 @@ def test_pricing_rates_identical_for_both_models(db_session: Session):
     pm = load_price_map()
     
     # Get rates for both models
-    instant_rates = pm["models"]["gpt-5.2-chat-latest"]
-    thinking_rates = pm["models"]["gpt-5.2"]
+    instant_rates = pm["models"]["gpt-5.3-chat-latest"]
+    thinking_rates = pm["models"]["gpt-5.4"]
     
     assert instant_rates["input"] == thinking_rates["input"], \
         "Input rates should be identical"
@@ -227,8 +227,8 @@ def test_pricing_rates_identical_for_both_models(db_session: Session):
     test_prompt = 1000
     test_completion = 500
     
-    instant_cost = quote_cost_usd(pm, "gpt-5.2-chat-latest", test_prompt, test_completion)
-    thinking_cost = quote_cost_usd(pm, "gpt-5.2", test_prompt, test_completion)
+    instant_cost = quote_cost_usd(pm, "gpt-5.3-chat-latest", test_prompt, test_completion)
+    thinking_cost = quote_cost_usd(pm, "gpt-5.4", test_prompt, test_completion)
     
     assert instant_cost == thinking_cost, \
         "For IDENTICAL token counts, cost should be IDENTICAL"
@@ -248,13 +248,13 @@ def test_check_actual_database_charges_for_consistency(db_session: Session):
     2. Real tokens not being captured
     3. Both models incorrectly using the same token counts
     """
-    # Check for any existing gpt-5.2 charges
+    # Check for any existing gpt-5.4 charges
     instant_charges = db_session.query(Charge).filter(
-        Charge.model == "gpt-5.2-chat-latest"
+        Charge.model == "gpt-5.3-chat-latest"
     ).all()
     
     thinking_charges = db_session.query(Charge).filter(
-        Charge.model == "gpt-5.2"
+        Charge.model == "gpt-5.4"
     ).all()
     
     print(f"\n=== Database Diagnostics ===")
@@ -281,7 +281,7 @@ def test_check_actual_database_charges_for_consistency(db_session: Session):
     
     # Check for any charges missing real token counts
     missing_real = db_session.query(Charge).filter(
-        Charge.model.in_(["gpt-5.2-chat-latest", "gpt-5.2"]),
+        Charge.model.in_(["gpt-5.3-chat-latest", "gpt-5.4"]),
         Charge.completion_tokens_real.is_(None)
     ).count()
     

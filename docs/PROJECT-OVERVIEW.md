@@ -33,10 +33,10 @@ Resume Tailor is a production-grade SaaS application that uses AI to tailor resu
 - **Email:** SMTP via Brevo (formerly Sendinblue)
 
 ### AI Providers
-- OpenAI (GPT-5.2 Instant, GPT-5.2 Thinking)
-- Anthropic Claude (Opus 4.5, Sonnet 4.5)
-- Google Gemini (3.0 Pro, 3.0 Flash)
-- xAI Grok (Grok 4, Grok 4.1 Fast)
+- OpenAI (GPT-5.3 Chat, GPT-5.4)
+- Anthropic Claude (Opus 4.6, Sonnet 4.6)
+- Google Gemini (3.1 Pro, 3 Flash)
+- xAI Grok (Grok 4, Grok 4.1 Fast Reasoning)
 - Extensible provider abstraction in `services/llm.py`
 
 ## Architecture Highlights

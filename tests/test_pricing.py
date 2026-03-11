@@ -62,7 +62,7 @@ def test_pricing_averages_and_balance_and_model_filter(client: TestClient, db_se
             add_charge(s, user_id=uid, request_type="tailor", provider="testprov", model="GPT-5", price_to_user_usd=2, cost_usd=1, created_at=base_time + timedelta(minutes=20 + i))
         # Add a few for another model to ensure filter works
         for i in range(3):
-            add_charge(s, user_id=uid, request_type="tailor", provider="testprov", model="Claude Sonnet 4.5", price_to_user_usd=3, cost_usd=1, created_at=base_time + timedelta(minutes=200 + i))
+            add_charge(s, user_id=uid, request_type="tailor", provider="testprov", model="Claude Sonnet 4.6", price_to_user_usd=3, cost_usd=1, created_at=base_time + timedelta(minutes=200 + i))
 
     # After seeding charges, ensure the live DB-derived balance equals $100.00
     with SessionLocal() as s:

@@ -63,7 +63,7 @@ test.describe("Model Settings E2E", () => {
     
     // Select models for tailor role
     const tailorSection = settingsSection.locator('text=/tailor/i').locator("..");
-    const geminiCheckbox = tailorSection.locator('input[type="checkbox"][value="gemini-3-pro-preview"]');
+    const geminiCheckbox = tailorSection.locator('input[type="checkbox"][value="gemini-3.1-pro-preview"]');
     await geminiCheckbox.check();
     
     // Wait for save (optimistic + server sync)
@@ -89,7 +89,7 @@ test.describe("Model Settings E2E", () => {
     await expect(reloadedClaude).toBeChecked();
     
     const reloadedTailorSection = reloadedSection.locator('text=/tailor/i').locator("..");
-    const reloadedGemini = reloadedTailorSection.locator('input[type="checkbox"][value="gemini-3-pro-preview"]');
+    const reloadedGemini = reloadedTailorSection.locator('input[type="checkbox"][value="gemini-3.1-pro-preview"]');
     await expect(reloadedGemini).toBeChecked();
   });
 
@@ -116,7 +116,7 @@ test.describe("Model Settings E2E", () => {
     await tailorRadio.check();
     
     const judgeSection = settingsSection.locator('text=/judge/i').locator("..");
-    const judgeRadio = judgeSection.locator('input[type="radio"][value="gemini-3-pro-preview"]');
+    const judgeRadio = judgeSection.locator('input[type="radio"][value="gemini-3.1-pro-preview"]');
     await judgeRadio.check();
     
     // Wait for save
@@ -143,7 +143,7 @@ test.describe("Model Settings E2E", () => {
     await expect(reloadedTailorRadio).toBeChecked();
     
     const reloadedJudgeSection = reloadedSection.locator('text=/judge/i').locator("..");
-    const reloadedJudgeRadio = reloadedJudgeSection.locator('input[type="radio"][value="gemini-3-pro-preview"]');
+    const reloadedJudgeRadio = reloadedJudgeSection.locator('input[type="radio"][value="gemini-3.1-pro-preview"]');
     await expect(reloadedJudgeRadio).toBeChecked();
   });
 
@@ -162,7 +162,7 @@ test.describe("Model Settings E2E", () => {
     await fitSection.locator('input[type="checkbox"][value="claude-4.1-opus"]').check();
     
     const tailorSection = settingsSection.locator('text=/tailor/i').locator("..");
-    await tailorSection.locator('input[type="checkbox"][value="gemini-3-pro-preview"]').check();
+    await tailorSection.locator('input[type="checkbox"][value="gemini-3.1-pro-preview"]').check();
     
     await page.waitForTimeout(1000);
     
@@ -174,7 +174,7 @@ test.describe("Model Settings E2E", () => {
     const fitRadio = page.locator('input[type="radio"][value="gpt-5"]');
     await expect(fitRadio).toBeChecked();
     
-    const tailorRadio = page.locator('input[type="radio"][value="gemini-3-pro-preview"]');
+    const tailorRadio = page.locator('input[type="radio"][value="gemini-3.1-pro-preview"]');
     await expect(tailorRadio).toBeChecked();
     
     // Step 3: Switch back to multi-model
@@ -189,7 +189,7 @@ test.describe("Model Settings E2E", () => {
     await expect(reloadedFitSection.locator('input[type="checkbox"][value="claude-4.1-opus"]')).toBeChecked();
     
     const reloadedTailorSection = settingsSection.locator('text=/tailor/i').locator("..");
-    await expect(reloadedTailorSection.locator('input[type="checkbox"][value="gemini-3-pro-preview"]')).toBeChecked();
+    await expect(reloadedTailorSection.locator('input[type="checkbox"][value="gemini-3.1-pro-preview"]')).toBeChecked();
   });
 
   test("4. Select All and Clear All buttons work correctly", async ({ page }) => {

@@ -687,8 +687,8 @@ export const SidebarModels: React.FC<Props> = ({
             const modelId = m.model_id;
             const isChecked = multiModelEnabled ? fitModels.includes(modelId) : fitModelId === modelId;
             
-            // Debug: log the check for Claude Sonnet 4.5
-            if (isRtDebug() && m.alias === "Claude Sonnet 4.5") {
+            // Debug: log the check for Claude Sonnet 4.6
+            if (isRtDebug() && m.alias === "Claude Sonnet 4.6") {
               console.log('[SidebarModels] Radio button render:', {
                 alias: m.alias,
                 modelId: m.model_id,

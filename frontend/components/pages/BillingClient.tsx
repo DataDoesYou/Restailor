@@ -506,16 +506,15 @@ export default function BillingClient({ initialBalance = null, initialTrial = nu
 							</tbody>
 						</table>
 					</div>
-					{isAdmin && ((summary?.price_map && Object.keys(summary.price_map).length) || summary?.multiplier != null) ? (
+					{((summary?.price_map && Object.keys(summary.price_map).length) || summary?.multiplier != null) ? (
 						<hr className="my-4 border-slate-700" />
 					) : null}
 				</div>
 			)}
 
-			{/* Admin-only: price map and multiplier */}
-			{isAdmin && (
-				<div>
-					<h2 className="text-xl font-semibold">Current price map and multiplier (read-only)</h2>
+			{/* Price map */}
+			<div>
+					<h2 className="text-xl font-semibold">Current price map</h2>
 					{summary?.multiplier != null && (
 						<div className="text-slate-400 text-sm">Multiplier: x{String(summary.multiplier)}</div>
 					)}
@@ -562,7 +561,6 @@ export default function BillingClient({ initialBalance = null, initialTrial = nu
 					) : null}
 					<div className="mt-2" />
 				</div>
-			)}
 		</div>
 	);
 }

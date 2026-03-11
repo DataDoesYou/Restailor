@@ -1,7 +1,7 @@
 """One-time migration: Upgrade trial models in system_settings to new model IDs.
 
 This script reads the trial_models list from the system_settings table,
-applies the automatic upgrade logic (e.g., gpt-5.1-thinking -> gpt-5.2),
+applies the automatic upgrade logic (e.g., gpt-5.1-thinking -> gpt-5.4),
 and writes the upgraded list back to the database.
 
 Run this once after deploying the GPT-5.2 model changes.
