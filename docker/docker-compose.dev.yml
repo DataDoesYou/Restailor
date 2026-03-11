@@ -80,6 +80,7 @@ services:
       STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY}
       STRIPE_PUBLISHABLE_KEY: ${STRIPE_PUBLISHABLE_KEY}
       STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET}
+      DEMO_USER_EMAIL: ${DEMO_USER_EMAIL:-}
     volumes:
       - ../:/app
     working_dir: /app
