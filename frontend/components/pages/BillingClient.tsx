@@ -92,6 +92,7 @@ export default function BillingClient({ initialBalance = null, initialTrial = nu
 		}
 	}, [authPending, isLoggedIn]);
 
+
 	// Persist toggle and broadcast to other tabs/pages
 	useEffect(() => {
 		try {
@@ -167,7 +168,10 @@ export default function BillingClient({ initialBalance = null, initialTrial = nu
 			const r = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/billing/purchase-intent`, {
 				method: "POST",
 				credentials: "include",
-				headers: { "Content-Type": "application/json" },
+				headers: {
+					"Content-Type": "application/json",
+					"X-Requested-With": "XMLHttpRequest",
+				},
 				body: JSON.stringify({ amount_usd: usd }),
 			});
 			if (r.status === 501) {
