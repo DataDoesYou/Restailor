@@ -453,7 +453,7 @@ A: Security risk (PII leakage, no audit logs). Use analytics schema instead.
 ---
 
 **Related Documentation:**
-- [Architecture](architecture.md)
+- [Architecture](ARCHITECTURE.md)
 - [Security](Security.md)
 - [Database Setup](DB.md)
 - [Deployment](DEPLOYMENT.md)

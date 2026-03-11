@@ -24,7 +24,7 @@ The repository is structured for self-hosting and local development. Secrets are
 - `frontend/` contains the Next.js application.
 - `docker/` contains local and production-oriented container definitions.
 
-See `docs/architecture.md` for the detailed component view.
+See `docs/ARCHITECTURE.md` for the detailed component view.
 
 ## Tech Stack
 
@@ -144,9 +144,9 @@ repo/
 
 ## Documentation
 
-- `docs/architecture.md`: component and deployment overview
+- `docs/ARCHITECTURE.md`: component and deployment overview
 - `docs/DEPLOYMENT.md`: production deployment guidance
-- `docs/README.md`: extended developer documentation
+- `docs/DEVELOPER_GUIDE.md`: extended developer documentation
 - `render.example.yaml`: generic Render blueprint example for self-hosters
 
 ## Contributing
