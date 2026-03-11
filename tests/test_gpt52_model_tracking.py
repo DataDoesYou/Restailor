@@ -137,7 +137,7 @@ def test_gpt52_models_distinct_in_analytics(db_session: Session):
     # Query distinct models
     distinct_models = db_session.query(Charge.model).filter(
         Charge.user_id == user.id,
-        Charge.model.like("gpt-5.4%")
+        Charge.model.like("gpt-5.%")
     ).distinct().all()
     
     model_names = [m[0] for m in distinct_models]

@@ -26,7 +26,7 @@ def test_validation_error_format():
             "label": "GPT-5.3 Chat",
             "meta": None,
             "multi": False,
-            "expected_pattern": r"\(label=GPT-5\.2 Chat Latest, meta=NULL, multi=NO\)"
+            "expected_pattern": r"\(label=GPT-5\.3 Chat, meta=NULL, multi=NO\)"
         },
         {
             "name": "Multi-mode with no models",
@@ -40,7 +40,7 @@ def test_validation_error_format():
             "label": "Claude Sonnet 4.6",
             "meta": {"provider": "anthropic", "model": "claude-sonnet-4-6"},
             "multi": False,
-            "expected_pattern": r"\(label=Claude Sonnet 4\.5, meta=anthropic/claude-sonnet-4-6, multi=NO\)"
+            "expected_pattern": r"\(label=Claude Sonnet 4\.6, meta=anthropic/claude-sonnet-4-6, multi=NO\)"
         },
     ]
     
