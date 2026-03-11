@@ -89,8 +89,9 @@ def test_balance_gate_blocks_and_no_charge_then_allows_after_topup(endpoint: str
         bal_after_block = int(ub.balance_cents)
 
     # Top up balance so the same request becomes affordable.
+    topped_up_balance_cents = 10000
     with SessionLocal() as s:
-        upsert_balance(s, user_id, 10000)
+        upsert_balance(s, user_id, topped_up_balance_cents)
 
     # Retry; should now pass and create a job (ack), still no immediate ledger charge
     r_ok = client.post(endpoint, headers=_auth(bearer) | {"X-Client-Id": f"cid-{uuid.uuid4()}"}, json=body)
@@ -103,6 +104,6 @@ def test_balance_gate_blocks_and_no_charge_then_allows_after_topup(endpoint: str
         assert s.query(Job).filter(Job.user_id == user_id).count() == base_jobs + 1
         # Worker not run in tests: no Charge rows incremented by enqueue alone
         assert s.query(Charge).filter(Charge.user_id == user_id).count() == base_charges
-        # Balance still non-negative and unchanged by enqueue
+        # Balance remains at the topped-up level; enqueue itself doesn't charge synchronously.
         ub = s.get(UserBalance, user_id)
-        assert ub is not None and int(ub.balance_cents) == bal_after_block
+        assert ub is not None and int(ub.balance_cents) == topped_up_balance_cents
