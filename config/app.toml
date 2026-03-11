@@ -442,7 +442,7 @@ first_byte_ms = 60000
 stream_stall_abort_ms = 45000
 
 [pricing]
-multiplier = 5.0
+multiplier = 2.0
 currency = "USD"
 
 [pricing.models]

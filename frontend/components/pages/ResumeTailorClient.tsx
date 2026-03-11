@@ -3897,59 +3897,8 @@ export default function ResumeTailorClient({ initialLoggedIn, initialAuthVerifie
 				{isLoggedIn !== true && (
 				  <div className="text-white">
 				    <div>
-				      Use the sidebar to Login/Register ▶️ New users get {trialUsdDisplay} in free credits (around
-				    {" "}
-				    <span
-				      aria-live="polite"
-				      className="tabular-nums inline-block align-baseline"
-				    >
-				      {typeof freeReqHint === "number" && freeReqHint > 0 ? freeReqHint : ""}
-				    </span>
-				    {" "}requests)
-				  </div>
-				  {(trialTotal !== null && trialTotal > 0) && (
-				    <>
-				      <div className="mt-1">
-				        Free trials remaining: {" "}
-				        <span
-				          aria-live="polite"
-				          className="tabular-nums inline-block align-baseline"
-				        >
-				          {typeof trialAvailable === 'number' ? trialAvailable : "—"}
-				        </span>
-				        <>
-				          {" out of "}
-				          <span className="tabular-nums inline-block align-baseline">
-				            {trialTotal}
-				          </span>
-				        </>
-				      </div>
-				      {(trialEndDate || trialDurationDays) && (
-				        <div className="mt-1">
-				          {trialEndDate ? (
-				            <span>
-				              Trials expire: {new Date(trialEndDate).toLocaleDateString()}
-				              {(() => {
-				                const today = new Date();
-				                const endDate = new Date(trialEndDate);
-				                const diffTime = endDate.getTime() - today.getTime();
-				                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-				                if (diffDays > 0) {
-				                  return ` (${diffDays} day${diffDays !== 1 ? 's' : ''} remaining)`;
-				                } else if (diffDays === 0) {
-				                  return ' (expires today)';
-				                } else {
-				                  return ' (expired)';
-				                }
-				              })()}
-				            </span>
-				          ) : trialDurationDays ? (
-				            <span>Trial duration: {trialDurationDays} day{trialDurationDays !== 1 ? 's' : ''} from signup</span>
-				          ) : null}
-				        </div>
-				      )}
-				    </>
-				  )}
+				      Use the sidebar to Login/Register
+				    </div>
 				  <div className="mt-1">
 				    Total requests processed: {" "}
 				    <span
