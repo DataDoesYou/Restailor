@@ -195,7 +195,6 @@ User Action → API → Database (applications table)
 - `GET /analytics/funnel`, `/trends` - Analytics
 
 ### Admin
-- `POST /admin/pricing` - Update pricing (requires step-up)
 - `POST /admin/credits/gift` - Gift credits (requires step-up)
 - `POST /admin/credits/gift-bulk` - Bulk gift (requires step-up)
 - `POST /admin/credits/reverse` - Reverse ledger entry (requires step-up)

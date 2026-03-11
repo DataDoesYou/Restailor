@@ -2,11 +2,7 @@ from __future__ import annotations
 
 from decimal import Decimal, ROUND_HALF_UP, getcontext
 from typing import Any, Dict, Tuple
-import os
 import time
-import json
-from pathlib import Path
-import logging
 
 from config_loader import load_config
 from services.money import to_cents as money_to_cents, format_usd
@@ -17,8 +13,6 @@ getcontext().prec = 28
 
 _PRICE_CACHE: Dict[str, Tuple[float, dict]] = {}
 _PRICE_CACHE_TTL_SEC = 60.0
-
-logger = logging.getLogger(__name__)
 
 
 def _now() -> float:
@@ -33,18 +27,8 @@ def _quantize_2(d: Decimal) -> Decimal:
     return d.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
 
-def _env_decimal(name: str) -> Decimal | None:
-    v = os.getenv(name)
-    if v is None or v == "":
-        return None
-    try:
-        return Decimal(str(v))
-    except Exception:
-        return None
-
-
 def load_price_map(cfg: dict | None = None) -> dict:
-    """Load pricing map from config with env overrides and TTL caching.
+    """Load pricing map from TOML config with TTL caching.
 
     Pricing keys are the exact provider API model IDs (e.g., "gpt-5", "gemini-3-pro-preview",
     "claude-sonnet-4-5-20250929"). We retain a small alias map for legacy/display names,
@@ -72,10 +56,9 @@ def load_price_map(cfg: dict | None = None) -> dict:
     models_flat = dict((pr.get("models", {}) or {}))
     aliases_cfg = dict((pr.get("aliases", {}) or {}))
 
-    # Multiplier & currency with env overrides
-    env_mult = _env_decimal("PRICING_MULTIPLIER")
-    multiplier = env_mult if env_mult is not None else Decimal(str(pr.get("multiplier", "1.0")))
-    currency = (os.getenv("PRICING_CURRENCY") or pr.get("currency") or "USD").strip() or "USD"
+    # Pricing is sourced from TOML config only.
+    multiplier = Decimal(str(pr.get("multiplier", "1.0")))
+    currency = str(pr.get("currency") or "USD").strip() or "USD"
 
     # Flatten "<Model>.input" and "<Model>.output" into nested structure
     models: Dict[str, Dict[str, Decimal]] = {}
@@ -114,47 +97,6 @@ def load_price_map(cfg: dict | None = None) -> dict:
         # normalized alias -> canonical pricing key
         "aliases": aliases,
     }
-
-    # Optional override file to persist runtime admin updates.
-    # Path defaults to config/pricing_override.json; can be overridden via PRICING_OVERRIDE_PATH.
-    try:
-        override_path = os.getenv("PRICING_OVERRIDE_PATH") or str(Path("config") / "pricing_override.json")
-        p = Path(override_path)
-        if p.exists():
-            with p.open("r", encoding="utf-8") as f:
-                ov = json.load(f) or {}
-            # Override multiplier if present
-            if "multiplier" in ov and ov["multiplier"] is not None:
-                try:
-                    result["multiplier"] = Decimal(str(ov["multiplier"]))
-                except Exception as e:
-                    logger.debug("invalid multiplier override in %s: %r", p, e)
-            # Override model rates if present
-            if isinstance(ov.get("models"), dict):
-                for name, rates in (ov["models"].items()):
-                    if not isinstance(rates, dict):
-                        continue
-                    cur = result.setdefault("models", {}).setdefault(str(name), {})
-                    if rates.get("input") is not None:
-                        try:
-                            cur["input"] = Decimal(str(rates["input"]))
-                        except Exception as e:
-                            logger.debug("invalid input rate override for %s: %r", name, e)
-                    if rates.get("output") is not None:
-                        try:
-                            cur["output"] = Decimal(str(rates["output"]))
-                        except Exception as e:
-                            logger.debug("invalid output rate override for %s: %r", name, e)
-            # Override or add aliases if present
-            if isinstance(ov.get("aliases"), dict):
-                for alias_key, canonical in (ov["aliases"].items()):
-                    try:
-                        result.setdefault("aliases", {})[_norm_model(alias_key)] = str(canonical)
-                    except Exception:
-                        continue
-    except Exception as e:
-        # Ignore override errors and proceed with base config
-        logger.debug("pricing override read failed: %r", e)
 
     _PRICE_CACHE[cache_key] = (now, result)
     return result

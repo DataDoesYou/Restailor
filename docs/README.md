@@ -435,7 +435,7 @@ See [PROJECT-OVERVIEW.md](PROJECT-OVERVIEW.md) for comprehensive details.
 - Public estimate: GET /pricing/estimate → returns cents and formatted USD.
 - Recent averages: GET /pricing/averages, /pricing/median, /pricing/average.
 - Balance and effective rates: GET /billing/summary, GET /users/me/balance.
-- Admin override: POST /admin/pricing (requires admin + step-up).
+- Source of truth: pricing is loaded from [pricing] and [pricing.models] in config/app.toml.
 
 See Pricing.md for formulas, config, and examples.
 

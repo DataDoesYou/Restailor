@@ -1,12 +1,9 @@
-version: "3.9"
 name: restailor
 
 services:
   postgres:
     image: postgres:16
     restart: unless-stopped
-    env_file:
-      - ../.env
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-${DB_USER:-postgres}}
       POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
@@ -48,8 +45,6 @@ services:
             --reload-exclude 'node_modules/*' \
             --reload-exclude '__pycache__/*' \
             --no-access-log
-    env_file:
-      - ../.env
     environment:
       DB_HOST: postgres
       DB_PASSWORD: ${DB_PASSWORD}
@@ -74,14 +69,14 @@ services:
       CLAUDE_API_KEY: ${CLAUDE_API_KEY}
       GEMINI_API_KEY: ${GEMINI_API_KEY}
       GROK_API_KEY: ${GROK_API_KEY}
-      MAIL_SERVER: ${MAIL_SERVER}
-      MAIL_PORT: ${MAIL_PORT}
-      MAIL_FROM: ${MAIL_FROM}
-      MAIL_STARTTLS: ${MAIL_STARTTLS}
-      MAIL_SSL_TLS: ${MAIL_SSL_TLS}
-      MAIL_USE_CREDENTIALS: ${MAIL_USE_CREDENTIALS}
-      MAIL_USERNAME: ${MAIL_USERNAME}
-      MAIL_PASSWORD: ${MAIL_PASSWORD}
+      MAIL_SERVER: ${MAIL_SERVER:-localhost}
+      MAIL_PORT: ${MAIL_PORT:-1025}
+      MAIL_FROM: ${MAIL_FROM:-noreply@example.com}
+      MAIL_STARTTLS: ${MAIL_STARTTLS:-0}
+      MAIL_SSL_TLS: ${MAIL_SSL_TLS:-0}
+      MAIL_USE_CREDENTIALS: ${MAIL_USE_CREDENTIALS:-0}
+      MAIL_USERNAME: ${MAIL_USERNAME:-}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
       STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY}
       STRIPE_PUBLISHABLE_KEY: ${STRIPE_PUBLISHABLE_KEY}
       STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET}
@@ -106,8 +101,6 @@ services:
       context: ..
       dockerfile: docker/arq.Dockerfile
     restart: unless-stopped
-    env_file:
-      - ../.env
     environment:
       DB_HOST: postgres
       DB_PASSWORD: ${DB_PASSWORD}

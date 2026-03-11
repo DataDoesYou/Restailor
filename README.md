@@ -83,6 +83,14 @@ docker compose -f docker/docker-compose.dev.yml up --build
 
 This starts Postgres, Redis, the API, the worker, and the frontend using the root `.env` file.
 
+Doppler is optional. If you use Doppler, you can run the same command with injected secrets:
+
+```bash
+doppler run --project restailor --config dev -- docker compose -f docker/docker-compose.dev.yml up --build
+```
+
+If you do not use Doppler, copy `.env.example` to `.env` and use plain `docker compose`.
+
 ## Running Tests
 
 ```bash

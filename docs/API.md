@@ -52,7 +52,6 @@ CHANGE SNAPSHOT (2025-09-11)
 | GET | /pricing/average | none | trimmed average |
 | GET | /users/me/balance | bearer | user balance |
 | GET | /billing/summary | bearer | balance + rates + averages |
-| POST | /admin/pricing | admin + step-up | update multiplier/model rates |
 
 ## Admin Credits
 
@@ -192,14 +191,12 @@ Headers/Cookies
 - GET /billing/summary
   - 200: { balance, multiplier, price_map, averages_by_model, averages_global }
 
-## Admin: Pricing
+## Pricing Configuration
 
-- POST /admin/pricing
-  - Auth: Authorization: Bearer <admin>, X-Stepup-Token: <ticket>
-  - Body: { multiplier?: number, models?: { <model>: { input?: number, output?: number } } }
-  - 200: { multiplier: number, currency: string, models: { <model>: { input: string, output: string } }, version }
-  - 400: invalid_multiplier | invalid_input_rate:<model> | invalid_output_rate:<model>
-  - 500: persist_failed:<reason>
+- Pricing is sourced from TOML config only:
+  - [pricing] for multiplier/currency
+  - [pricing.models] for input/output rates
+  - [pricing.aliases] for display-name aliases
 
 - GET /admin/token_billing_stats
   - Auth: Authorization: Bearer <admin>, X-Stepup-Token: <ticket>
