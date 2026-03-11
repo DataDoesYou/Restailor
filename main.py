@@ -2427,6 +2427,7 @@ class HealthResponse(BaseModel):
     ok: bool
     db: Optional[str] | None = None
     redis: Optional[str] | None = None
+    deploy_marker: Optional[str] | None = None
 
 
 @limiter.exempt
@@ -2435,8 +2436,9 @@ async def healthz(
     request: Request,
     deep: bool = False,
 ) -> HealthResponse:
+    deploy_marker = os.getenv("RENDER_GIT_COMMIT") or "render-deploy-check-2026-03-11"
     if not deep:
-        return HealthResponse(ok=True)
+        return HealthResponse(ok=True, deploy_marker=deploy_marker)
     db_status = "unknown"
     redis_status = "unknown"
     try:
@@ -2462,7 +2464,7 @@ async def healthz(
     except Exception:
         redis_status = "down"
     # Return 200 for LB health; expose component statuses for observability
-    return HealthResponse(ok=True, db=db_status, redis=redis_status)
+    return HealthResponse(ok=True, db=db_status, redis=redis_status, deploy_marker=deploy_marker)
 
 
 @limiter.exempt
