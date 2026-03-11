@@ -119,8 +119,6 @@ repo/
 └─ .env.example
 ```
 
-The repository does not currently use a `src/` layout for the Python package. That change would require coordinated updates to imports, Alembic, tests, Docker, and editor tooling, so this OSS cleanup keeps the current package layout and documents it clearly instead of doing a disruptive move.
-
 ## Documentation
 
 - `docs/architecture.md`: component and deployment overview
