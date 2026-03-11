@@ -1,0 +1,146 @@
+# Render Blueprint Configuration for Restailor
+# https://render.com/docs/blueprint-spec
+# Updated: Force Blueprint sync for environment variables
+
+databases:
+  - name: restailor-db
+    databaseName: restailor
+    plan: basic-256mb  # New flexible plan - ~$7/month
+    region: ohio
+
+services:
+  # Redis Key-Value Store
+  - type: keyvalue
+    name: restailor-redis
+    plan: starter  # $1/month - Redis has no free tier
+    region: ohio
+    maxmemoryPolicy: allkeys-lru
+
+  # FastAPI Backend Service
+  - type: web
+    name: restailor-api
+    runtime: python
+    plan: starter  # $7/month - no spin-down, always available
+    region: ohio
+    repo: https://github.com/DataDoesYou/Restailor
+    branch: main
+    domains:
+      - api.restailor.com
+    buildCommand: |
+      curl -Ls --tlsv1.2 --proto "=https" --retry 3 https://cli.doppler.com/install.sh | bash
+      pip install poetry && poetry install --only main
+    startCommand: |
+      doppler run -p restailor -c prd -- poetry run alembic upgrade head
+      doppler run -p restailor -c prd -- poetry run uvicorn main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /healthz
+    autoDeployTrigger: commit
+    envVars:
+      - key: DOPPLER_PROJECT
+        value: restailor
+      - key: DOPPLER_CONFIG
+        value: prd
+      - key: DOPPLER_ENVIRONMENT
+        value: prd
+      - key: WEBAUTHN_RP_ID
+        value: restailor.com
+      - key: WEBAUTHN_RP_NAME
+        value: Restailor
+      - key: WEBAUTHN_ORIGIN
+        value: https://restailor.com
+      - key: SIGNUP_CAPTCHA_REQUIRED
+        value: "1"
+      - key: BACKEND_BASE_URL
+        value: https://api.restailor.com
+      - key: CREDIT_MAX_PER_IP_PER_DAY
+        value: "3"
+      - key: CREDIT_MAX_PER_ASN_PER_DAY
+        value: "50"
+      - key: ALLOWED_ORIGINS
+        value: https://restailor.com,https://www.restailor.com
+      - key: COOKIE_DOMAIN
+        value: .restailor.com
+      - key: FORCE_HTTPS_HEADERS
+        value: "1"
+      - key: FRONTEND_URL
+        value: https://restailor.com
+      - key: FRONTEND_REDIRECT_URL
+        value: https://restailor.com
+      - key: MAIL_SERVER
+        value: smtp-relay.brevo.com
+      - key: MAIL_PORT
+        value: "587"
+      - key: MAIL_FROM_NAME
+        value: Restailor
+      - key: MAIL_STARTTLS
+        value: "1"
+      - key: MAIL_SSL_TLS
+        value: "0"
+      - key: MAIL_USE_CREDENTIALS
+        value: "1"
+      # Doppler token for runtime secret fetching
+      - key: DOPPLER_TOKEN
+        sync: false
+
+  # ARQ Background Worker
+  - type: worker
+    name: restailor-worker
+    runtime: python
+    plan: starter  # $7/month - no spin-down, always running
+    region: ohio
+    repo: https://github.com/DataDoesYou/Restailor
+    branch: main
+    buildCommand: |
+      curl -Ls --tlsv1.2 --proto "=https" --retry 3 https://cli.doppler.com/install.sh | bash
+      pip install poetry && poetry install --only main
+    startCommand: doppler run -p restailor -c prd -- poetry run arq worker.WorkerSettings
+    autoDeployTrigger: commit
+    envVars:
+      - key: STRICT_SECRETS
+        value: "1"
+      - key: DOPPLER_PROJECT
+        value: restailor
+      - key: DOPPLER_CONFIG
+        value: prd
+      - key: DOPPLER_ENVIRONMENT
+        value: prd
+      - key: ARQ_MAX_JOBS
+        value: "6"
+      # Doppler token for runtime secret fetching
+      - key: DOPPLER_TOKEN
+        sync: false
+
+  # Next.js Frontend
+  - type: web
+    name: restailor-frontend
+    runtime: node
+    plan: starter  # $7/month - no spin-down, always available
+    region: ohio
+    repo: https://github.com/DataDoesYou/Restailor
+    branch: main
+    rootDir: frontend
+    domains:
+      - restailor.com
+      - www.restailor.com
+    buildCommand: |
+      npm ci --include=dev
+      npm run build
+    startCommand: npm start
+    autoDeployTrigger: commit
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: INTERNAL_API_BASE_URL
+        value: https://api.restailor.com
+      - key: NEXT_PUBLIC_API_URL
+        value: https://api.restailor.com
+      - key: NEXT_PUBLIC_API_BASE_URL
+        value: https://api.restailor.com
+      - key: NEXT_PUBLIC_SITE_URL
+        value: https://restailor.com
+      - key: NEXT_PUBLIC_FEATURE_ANALYTICS
+        value: "1"
+      - key: NEXT_TELEMETRY_DISABLED
+        value: "1"
+      # Cloudflare Turnstile CAPTCHA site key (public, safe to commit)
+      - key: NEXT_PUBLIC_TURNSTILE_SITE_KEY
+        value: 0x4AAAAAACADoTLZH7pI8MiR

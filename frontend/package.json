@@ -1,0 +1,49 @@
+{
+  "name": "restailor-frontend",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --webpack -p 3000 -H 0.0.0.0",
+    "build": "next build",
+    "start": "next start -p 3000",
+    "test": "vitest run -c vitest.config.ts",
+    "test:e2e": "playwright test -c playwright.config.ts",
+    "test:ssr-no-flash": "playwright test -c playwright.config.ts e2e.visual/no-flash-ssr.spec.ts",
+    "mock:api": "node ./e2e.visual/mock-api-server.cjs",
+    "clean:ts": "node -e \"try{require('fs').rmSync('.tsbuildinfo',{force:true});}catch(e){}\"; rimraf .next; rimraf node_modules/.cache",
+    "vscode:reset": "echo Restarting TS server requires VS Code command; run: Ctrl+Shift+P → 'TypeScript: Restart TS server'"
+  },
+  "dependencies": {
+    "@radix-ui/react-select": "^2.0.0",
+    "@radix-ui/react-tabs": "^1.0.4",
+    "@radix-ui/react-toast": "^1.1.5",
+    "@tailwindcss/typography": "^0.5.10",
+    "clsx": "^2.1.1",
+    "keytar": "^7.9.0",
+    "next": "^16.0.10",
+    "react": "^19.2.3",
+    "react-dom": "^19.2.3",
+    "react-markdown": "^9.0.3",
+    "recharts": "^2.12.7",
+    "remark-breaks": "^3.0.3",
+    "remark-gfm": "^4.0.0",
+    "restailor-e2e": "file:../e2e",
+    "restailor-root": "file:..",
+    "tailwind-merge": "^2.5.2"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.57.0",
+    "@testing-library/jest-dom": "^6.5.0",
+    "@testing-library/react": "^16.0.1",
+    "@types/node": "^20.11.30",
+    "@types/react": "^19.2.7",
+    "@types/react-dom": "^19.2.3",
+    "autoprefixer": "^10.4.18",
+    "jsdom": "^26.1.0",
+    "postcss": "^8.4.35",
+    "rimraf": "^6.0.1",
+    "tailwindcss": "^3.4.10",
+    "typescript": "^5.5.4",
+    "vitest": "^4.0.15"
+  }
+}

@@ -1,0 +1,429 @@
+"use client";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { Suspense, useEffect, useMemo, useRef, useState, useCallback } from "react";
+import api from "@/lib/api";
+import { clearAccessToken, clearEphemeralAccessToken } from "@/lib/auth";
+import LoginClient from "@/components/pages/LoginClient";
+import { DISPLAY_OPTIONS, FIT_MODEL_STORAGE_KEY, TAILOR_MODEL_STORAGE_KEY, JUDGE_OPTIONS, JUDGE_STORAGE_KEY, SHOW_JUDGE_STORAGE_KEY, MODEL_REGISTRY as SHARED_MODELS, BENCH_INCLUDED_KEY, deriveAliasAndTooltip } from "@/components/resume/models";
+import SidebarModels from "@/components/chrome/SidebarModels";
+import dynamic from "next/dynamic";
+const AuthDebug = process.env.NEXT_PUBLIC_RT_DEBUG === "1"
+  ? dynamic(() => import("@/components/debug/AuthDebug"), { ssr: false })
+  : null as unknown as (() => JSX.Element);
+import SidebarSkeleton from "@/components/chrome/SidebarSkeleton";
+
+export default function SidebarClient({ initialMe = null, initialBalance = null, initialFitModelLabel, initialTailorModelLabel, initialJudgeLabel, initialShowJudge, initialBenchIncluded }: { initialMe?: any | null; initialBalance?: any | null; initialFitModelLabel?: string; initialTailorModelLabel?: string; initialJudgeLabel?: string; initialShowJudge?: boolean; initialBenchIncluded?: Record<string, boolean> }) {
+  const [me, setMe] = useState<any | null>(initialMe);
+  const [balance, setBalance] = useState<any | null>(initialBalance);
+  const hadSsrAuth = typeof initialMe !== "undefined" && initialMe !== null;
+  const [loaded, setLoaded] = useState<boolean>(hadSsrAuth);
+
+  useEffect(() => {
+    let mounted = true;
+    const load = async () => {
+      try { const u = await api.get("/users/me"); if (mounted) setMe(u); } catch { if (mounted) setMe(null); }
+      try { const b = await api.get("/users/me/balance"); if (mounted) setBalance(b); } catch {}
+      if (mounted) setLoaded(true);
+    };
+    // For logged-out SSR, skip the initial background fetch to avoid extra re-renders; listen for auth events instead.
+    if (hadSsrAuth) {
+      load();
+    } else {
+      setLoaded(true);
+    }
+    const onAuth = () => load();
+    window.addEventListener("rt-auth", onAuth as EventListener);
+    return () => { mounted = false; window.removeEventListener("rt-auth", onAuth as EventListener); };
+  }, [hadSsrAuth]);
+
+  // Live balance updates: listen for global balance events and refresh or set from payload
+  useEffect(() => {
+    let disposed = false;
+    const onBalance = async (e: Event) => {
+      if (disposed) return;
+      const d = (e as CustomEvent).detail || {};
+      // If a new balance is provided, apply it directly; otherwise refetch
+      if (typeof d.balance_usd !== "undefined" || typeof d.balance_cents !== "undefined") {
+        setBalance((prev: any) => ({ ...(prev || {}), ...d, currency: d.currency || ((prev && (prev as any).currency) || "USD") }));
+      } else {
+        try { const b = await api.get("/users/me/balance"); if (!disposed) setBalance(b); } catch {}
+      }
+    };
+    window.addEventListener("rt-balance", onBalance as EventListener);
+    return () => { disposed = true; window.removeEventListener("rt-balance", onBalance as EventListener); };
+  }, []);
+
+  // Granular selections (Fit vs Tailor).
+  const [fitModelLabel, setFitModelLabel] = useState<string>(() => {
+    // Priority: SSR cookie > localStorage > default
+    if (initialFitModelLabel && DISPLAY_OPTIONS.some(o => o.label === initialFitModelLabel)) {
+      console.log('[SidebarClient] Init fitModelLabel from SSR:', initialFitModelLabel);
+      return initialFitModelLabel;
+    }
+    if (typeof window !== 'undefined') {
+      try {
+        const stored = localStorage.getItem(FIT_MODEL_STORAGE_KEY);
+        console.log('[SidebarClient] Init fitModelLabel from localStorage:', stored);
+        if (stored && DISPLAY_OPTIONS.some(o => o.label === stored)) return stored;
+      } catch {}
+    }
+    console.log('[SidebarClient] Init fitModelLabel with default:', DISPLAY_OPTIONS[0].label);
+    return DISPLAY_OPTIONS[0].label;
+  });
+  const [tailorModelLabel, setTailorModelLabel] = useState<string>(() => {
+    // Priority: SSR cookie > localStorage > default
+    if (initialTailorModelLabel && DISPLAY_OPTIONS.some(o => o.label === initialTailorModelLabel)) {
+      console.log('[SidebarClient] Init tailorModelLabel from SSR:', initialTailorModelLabel);
+      return initialTailorModelLabel;
+    }
+    if (typeof window !== 'undefined') {
+      try {
+        const stored = localStorage.getItem(TAILOR_MODEL_STORAGE_KEY);
+        console.log('[SidebarClient] Init tailorModelLabel from localStorage:', stored);
+        if (stored && DISPLAY_OPTIONS.some(o => o.label === stored)) return stored;
+      } catch {}
+    }
+    console.log('[SidebarClient] Init tailorModelLabel with default:', DISPLAY_OPTIONS[0].label);
+    return DISPLAY_OPTIONS[0].label;
+  });
+  // REMOVED: Post-mount localStorage reconciliation was causing state to be overwritten after hydration.
+  // Initial state now reads directly from localStorage in the useState initializers above, so no reconciliation needed.
+  // Broadcast granular model selections (legacy unified cookie removed)
+  useEffect(() => {
+    console.log('[SidebarClient] Broadcasting rt-sidebar event:', { fitModelLabel, tailorModelLabel });
+    try { window.dispatchEvent(new CustomEvent("rt-sidebar", { detail: { fitModelLabel, tailorModelLabel } })); } catch {}
+  }, [fitModelLabel, tailorModelLabel]);
+  // Persist new granular keys
+  useEffect(() => { 
+    console.log('[SidebarClient] Persisting fitModelLabel to localStorage:', fitModelLabel);
+    try { localStorage.setItem(FIT_MODEL_STORAGE_KEY, fitModelLabel); const secure=(typeof location!=="undefined"&&location.protocol==="https:")?"; Secure":""; document.cookie=`rt_fit_model_label=${encodeURIComponent(fitModelLabel)}; Path=/; SameSite=Lax${secure}; Max-Age=${365*24*60*60}`; } catch {} 
+  }, [fitModelLabel]);
+  useEffect(() => { 
+    console.log('[SidebarClient] Persisting tailorModelLabel to localStorage:', tailorModelLabel);
+    try { localStorage.setItem(TAILOR_MODEL_STORAGE_KEY, tailorModelLabel); const secure=(typeof location!=="undefined"&&location.protocol==="https:")?"; Secure":""; document.cookie=`rt_tailor_model_label=${encodeURIComponent(tailorModelLabel)}; Path=/; SameSite=Lax${secure}; Max-Age=${365*24*60*60}`; } catch {} 
+  }, [tailorModelLabel]);
+
+  // Compute route and roles (hooks must be unconditional)
+  const pathname = usePathname() || "";
+  const uname = String(me?.email || me?.username || "").trim();
+  const isAdmin = String(me?.role || "").toLowerCase() === "admin";
+  const isActive = (href: string) => pathname === href || pathname.startsWith(href + "/");
+  const navLinkClass = (href: string) => [
+    "block rounded px-3 py-2 transition-colors",
+    // base link-like styling
+    "underline",
+    // interactive
+    "hover:bg-slate-700 active:bg-slate-500",
+    // active state
+    isActive(href) ? "bg-slate-700/70 text-white no-underline font-semibold" : ""
+  ].filter(Boolean).join(" ");
+  const featureAnalytics = (process.env.NEXT_PUBLIC_FEATURE_ANALYTICS ?? "1") === "1";
+
+  // Sidebar-level state for Job Fit and Judge Model, persisted like Streamlit
+  // SSR-safe defaults; hydrate directly from localStorage in initializers
+  const [showJudge, setShowJudge] = useState<boolean>(() => {
+    // Priority: SSR cookie > localStorage > default
+    if (typeof initialShowJudge === 'boolean') return initialShowJudge;
+    if (typeof window !== 'undefined') {
+      try { return localStorage.getItem(SHOW_JUDGE_STORAGE_KEY) === '1'; } catch {}
+    }
+    return false;
+  });
+  // Judge label (used on Resume & Benchmark).
+  const [judgeLabel, setJudgeLabel] = useState<string>(() => {
+    // Priority: SSR cookie > localStorage > default
+    if (initialJudgeLabel && JUDGE_OPTIONS.some(o => o.label === initialJudgeLabel)) return initialJudgeLabel;
+    if (typeof window !== 'undefined') {
+      try {
+        const stored = localStorage.getItem(JUDGE_STORAGE_KEY);
+        if (stored && JUDGE_OPTIONS.some(o => o.label === stored)) return stored;
+      } catch {}
+    }
+    return JUDGE_OPTIONS[0].label;
+  });
+  const [judgeReady, setJudgeReady] = useState(true); // immediate since we seeded from SSR or LS
+  // REMOVED: Post-mount localStorage reconciliation was causing state to be overwritten after hydration.
+  // Initial state now reads directly from localStorage in the useState initializers above, so no reconciliation needed.
+  // Persist to storage and a cookie so page can read it without prop drilling
+  useEffect(() => {
+    try {
+      localStorage.setItem(SHOW_JUDGE_STORAGE_KEY, showJudge ? "1" : "0");
+      const secure = (typeof location !== "undefined" && location.protocol === "https:") ? "; Secure" : "";
+      document.cookie = `rt_show_judge=${showJudge ? "1" : "0"}; Path=/; SameSite=Lax${secure}; Max-Age=${365*24*60*60}`;
+      window.dispatchEvent(new CustomEvent("rt-sidebar", { detail: { showJudge } }));
+    } catch {}
+  }, [showJudge]);
+  useEffect(() => {
+    if (!judgeReady) return; // avoid overwriting stored preference before hydration
+    try {
+      localStorage.setItem(JUDGE_STORAGE_KEY, judgeLabel);
+      const secure = (typeof location !== "undefined" && location.protocol === "https:") ? "; Secure" : "";
+      document.cookie = `rt_judge_label=${encodeURIComponent(judgeLabel)}; Path=/; SameSite=Lax${secure}; Max-Age=${365*24*60*60}`;
+      window.dispatchEvent(new CustomEvent("rt-sidebar", { detail: { judgeLabel } }));
+    } catch {}
+  }, [judgeLabel, judgeReady]);
+
+  // Listen for page run-state to disable controls while a job is active
+  const [running, setRunning] = useState<boolean>(false);
+  useEffect(() => {
+    const onRun = (e: Event) => {
+      const d = (e as CustomEvent).detail || {};
+      if (typeof d.running === "boolean") {
+        setRunning(d.running);
+        // On run stop, refresh balance immediately
+        if (d.running === false) {
+          (async () => {
+            try { const b = await api.get("/users/me/balance"); setBalance(b); } catch {}
+          })();
+        }
+      }
+    };
+    window.addEventListener("rt-run", onRun as EventListener);
+    return () => window.removeEventListener("rt-run", onRun as EventListener);
+  }, []);
+
+  // Listen for main-page state changes for showJudge/judgeLabel
+  useEffect(() => {
+    const onSidebarEvt = (e: Event) => {
+      const d = (e as CustomEvent).detail || {};
+      if (typeof d.showJudge === "boolean") setShowJudge(d.showJudge);
+      if (typeof d.judgeLabel === "string") setJudgeLabel(d.judgeLabel);
+    };
+    window.addEventListener("rt-sidebar", onSidebarEvt as EventListener);
+    return () => window.removeEventListener("rt-sidebar", onSidebarEvt as EventListener);
+  }, []);
+
+  // ---------------- Benchmark Settings (for /benchmark) -----------------
+  const benchAliases = useMemo(() => Object.keys(SHARED_MODELS), []);
+  // Included models for Benchmark page.
+  const [benchIncluded, setBenchIncluded] = useState<Record<string, boolean>>(() => {
+    const base = Object.fromEntries(benchAliases.map(a => [a, false])) as Record<string, boolean>;
+    // Seed from SSR prop first (cookie parsed server-side)
+    if (initialBenchIncluded && typeof initialBenchIncluded === 'object') {
+      for (const a of benchAliases) if (typeof initialBenchIncluded[a] === 'boolean') base[a] = !!initialBenchIncluded[a];
+    } else if (typeof window !== 'undefined') {
+      try {
+        let parsed: any = null;
+        const raw = localStorage.getItem(BENCH_INCLUDED_KEY);
+        if (raw) parsed = JSON.parse(raw);
+        if (!parsed) {
+          const m = document.cookie.match(/(?:^|; )rt_bench_included=([^;]+)/);
+          if (m) { try { parsed = JSON.parse(decodeURIComponent(m[1])); } catch {} }
+        }
+        if (parsed && typeof parsed === 'object') {
+          for (const a of benchAliases) if (typeof parsed[a] === 'boolean') base[a] = !!parsed[a];
+        }
+      } catch {}
+    }
+    return base;
+  });
+  const [benchReady, setBenchReady] = useState(true); // now ready immediately (no hide)
+  const benchAllSelected = useMemo(() => benchAliases.every(a => !!benchIncluded[a]), [benchAliases, benchIncluded]);
+  const benchToggleAll = useCallback((val: boolean) => {
+    const next = Object.fromEntries(benchAliases.map(a => [a, val]));
+    setBenchIncluded(next);
+    try { localStorage.setItem(BENCH_INCLUDED_KEY, JSON.stringify(next)); } catch {}
+    try { window.dispatchEvent(new CustomEvent("rt-bench", { detail: { included: next } })); } catch {}
+  }, [benchAliases]);
+  // persist and broadcast on change
+  useEffect(() => {
+    if (!benchReady) return;
+    try { localStorage.setItem(BENCH_INCLUDED_KEY, JSON.stringify(benchIncluded)); } catch {}
+    try {
+      const secure = (typeof location !== "undefined" && location.protocol === "https:") ? "; Secure" : "";
+      document.cookie = `rt_bench_included=${encodeURIComponent(JSON.stringify(benchIncluded))}; Path=/; SameSite=Lax${secure}; Max-Age=${365*24*60*60}`;
+    } catch {}
+    try { window.dispatchEvent(new CustomEvent("rt-bench", { detail: { included: benchIncluded } })); } catch {}
+  }, [benchIncluded, benchReady]);
+  // accept updates from page/storage
+  useEffect(() => {
+    const onBench = (e: Event) => {
+      const d = (e as CustomEvent).detail || {};
+      if (d && d.included && typeof d.included === 'object') setBenchIncluded(d.included);
+    };
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === BENCH_INCLUDED_KEY && e.newValue) {
+        try { const parsed = JSON.parse(e.newValue); if (parsed && typeof parsed === 'object') setBenchIncluded(parsed); } catch {}
+      }
+    };
+    window.addEventListener("rt-bench", onBench as EventListener);
+    window.addEventListener("storage", onStorage);
+    return () => { window.removeEventListener("rt-bench", onBench as EventListener); window.removeEventListener("storage", onStorage); };
+  }, []);
+
+  return (
+  <aside className="sticky top-0 h-[calc(100vh-2rem)] md:h-[calc(100vh-3rem)] text-slate-200 text-sm md:text-base w-[240px] min-w-[240px] max-w-[240px] shrink-0 box-border relative">
+      <div className="space-y-2 px-5 h-full overflow-y-auto hover-thin-scrollbar">
+        {!me ? (
+          <>
+            {/* Render login form immediately without Suspense to avoid progressive reveal */}
+            <LoginClient stackedButtons />
+            {AuthDebug ? <AuthDebug /> : null}
+            {(isActive("/resume") || pathname === "/") && (
+              <div className="mt-4">
+                <SidebarModels
+                  fitModelLabel={fitModelLabel}
+                  setFitModelLabel={(l)=>{ if (running) return; setFitModelLabel(l); }}
+                  tailorModelLabel={tailorModelLabel}
+                  setTailorModelLabel={(l)=>{ if (running) return; setTailorModelLabel(l); }}
+                  judgeLabel={judgeLabel}
+                  setJudgeLabel={(l)=>{ if (running) return; setJudgeLabel(l); }}
+                  running={running}
+                  showJudge={true}
+                />
+              </div>
+            )}
+          </>
+        ) : (
+          <>
+        {/* Admin links appear above Account */}
+        {isAdmin && (
+          <div className="mb-2 space-y-2">
+            <nav className="flex flex-col gap-1">
+              <Link href="/resume" className={navLinkClass("/resume")} aria-current={isActive("/resume") ? "page" : undefined}>Resume Tailor</Link>
+              <Link href="/history" className={navLinkClass("/history")} aria-current={isActive("/history") ? "page" : undefined}>History</Link>
+              {featureAnalytics && (
+                <Link href="/dashboard/analytics" className={navLinkClass("/dashboard/analytics")} aria-current={isActive("/dashboard/analytics") ? "page" : undefined}>Analytics</Link>
+              )}
+              <Link href="/billing" className={navLinkClass("/billing")} aria-current={isActive("/billing") ? "page" : undefined}>Billing</Link>
+              <Link href="/security" className={navLinkClass("/security")} aria-current={isActive("/security") ? "page" : undefined}>Security</Link>
+              <Link href="/settings" className={navLinkClass("/settings")} aria-current={isActive("/settings") ? "page" : undefined}>Settings</Link>
+              <Link href="/db-test" className={navLinkClass("/db-test")} aria-current={isActive("/db-test") ? "page" : undefined}>DB Test</Link>
+              <Link href="/admin" className={navLinkClass("/admin")} aria-current={isActive("/admin") ? "page" : undefined}>Admin</Link>
+            </nav>
+          </div>
+        )}
+        {isAdmin && (
+          <div
+            role="separator"
+            aria-hidden
+            className="-mx-12 w-full h-px bg-slate-700/70"
+            style={{ marginTop: 24, marginBottom: 24 }}
+          />
+        )}
+        <h2 className="text-lg md:text-xl font-semibold">Account</h2>
+        <div className="mb-4">Welcome, {uname}</div>
+        {balance && (typeof balance.balance_usd === "string" || typeof balance.balance_usd === "number") && (
+          <div className="text-slate-400 text-sm md:text-base">Balance: ${String(balance.balance_usd)}</div>
+        )}
+        <div className="mt-4">
+          <button
+            className="w-full text-left underline btn-plain"
+            onClick={() => {
+              (async () => {
+                try {
+                  await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/logout`, { method: 'POST', credentials: 'include' });
+                } catch {}
+                try { clearAccessToken(); clearEphemeralAccessToken(); } catch {}
+                try {
+                  // Clear local input store and broadcast to live pages
+                  localStorage.setItem("__rt_resume_text", "");
+                  localStorage.setItem("__rt_jd_text", "");
+                  localStorage.setItem("__rt_resume_ts", JSON.stringify(0));
+                  localStorage.setItem("__rt_jd_ts", JSON.stringify(0));
+                  window.dispatchEvent(new CustomEvent("rt-inputs", { detail: { resumeText: "", jdText: "", rTs: 0, jTs: 0 } }));
+                } catch {}
+                try { window.dispatchEvent(new CustomEvent("rt-auth", { detail: { state: "logged-out", reason: 'manual' } })); } catch {}
+                window.location.href = "/";
+              })();
+            }}
+          >Logout</button>
+        </div>
+  <div
+    role="separator"
+    aria-hidden
+    className="-mx-12 w-full h-px bg-slate-700/70"
+    style={{ marginTop: 24, marginBottom: 24 }}
+  />
+  
+  {(isActive("/resume") || pathname === "/") && (
+        <div className="mt-3">
+          <SidebarModels
+            fitModelLabel={fitModelLabel}
+            setFitModelLabel={(l)=>{ if (running) return; setFitModelLabel(l); }}
+            tailorModelLabel={tailorModelLabel}
+            setTailorModelLabel={(l)=>{ if (running) return; setTailorModelLabel(l); }}
+            judgeLabel={judgeLabel}
+            setJudgeLabel={(l)=>{ if (running) return; setJudgeLabel(l); }}
+            running={running}
+            showJudge={showJudge}
+          />
+        </div>
+  )}
+          {/* Job Fit checkbox just like main page; controls Judge Model visibility */}
+      {/* Only show Fit/Judge controls on the Resume page to match legacy */}
+  {/* Fit toggle lives on the main page; sidebar reflects its state only */}
+        {/* Non-admin: keep minimal nav and keep it below Account for now */}
+    {!isAdmin && (
+          <div className="mt-6 space-y-2">
+            <nav className="flex flex-col gap-1">
+              <Link href="/history" className={navLinkClass("/history")} aria-current={isActive("/history") ? "page" : undefined}>History</Link>
+              {featureAnalytics && (
+                <Link href="/dashboard/analytics" className={navLinkClass("/dashboard/analytics")} aria-current={isActive("/dashboard/analytics") ? "page" : undefined}>Analytics</Link>
+              )}
+              <Link href="/db-test" className={navLinkClass("/db-test")} aria-current={isActive("/db-test") ? "page" : undefined}>DB Test</Link>
+            </nav>
+          </div>
+        )}
+
+        {/* Benchmark Settings: visible on the Benchmark page */}
+        {isActive("/benchmark") && (
+          <div className="mt-6">
+            <div className="text-base md:text-lg font-semibold mb-2">Benchmark Settings</div>
+      <div className="mb-2">Judge model</div>
+            <div className="space-y-1.5 mb-3">
+              {JUDGE_OPTIONS.map((opt) => {
+                const { alias, tooltip, rest } = deriveAliasAndTooltip(opt.label);
+                return (
+                  <label key={opt.label} className="flex items-start gap-2 min-h-6" title={tooltip}>
+                    <input
+                      type="radio"
+                      className={`h-4 w-4 mt-1 accent-amber-500 ${running ? 'cursor-not-allowed opacity-70' : ''}`}
+                      name="rt_bench_judge"
+                      aria-disabled={running}
+                      aria-label={alias}
+                      aria-description={rest || undefined}
+                      checked={judgeLabel === opt.label}
+                      onChange={() => { if (running) return; setJudgeLabel(opt.label); }}
+                    />
+                    <span className="text-base leading-6">{alias}</span>
+                  </label>
+                );
+              })}
+            </div>
+            <div role="separator" aria-hidden className="-mx-12 w-full h-px bg-slate-700/70 my-3" />
+            <div className="text-base font-semibold mb-2">Included Models</div>
+            <label className="flex items-center gap-2 mb-2">
+              <input id="bench_all" type="checkbox" className={`accent-amber-500 ${running ? 'cursor-not-allowed opacity-70' : ''}`} aria-disabled={running} checked={benchAllSelected} onChange={(e) => { if (running) return; benchToggleAll(e.target.checked); }} />
+              <span>Select all</span>
+            </label>
+            <div className="space-y-1">
+              {benchAliases.map((a) => {
+                const { alias, tooltip, rest } = deriveAliasAndTooltip(a);
+                return (
+                  <label key={a} className="flex items-center gap-2" title={tooltip}>
+                    <input
+                      type="checkbox"
+                      className={`accent-amber-500 ${running ? 'cursor-not-allowed opacity-70' : ''}`}
+                      aria-disabled={running}
+                      aria-label={alias}
+                      aria-description={rest || undefined}
+                      checked={!!benchIncluded[a]}
+                      onChange={(e) => { if (running) return; setBenchIncluded(prev => ({ ...prev, [a]: e.target.checked })); }}
+                    />
+                    <span>{alias}</span>
+                  </label>
+                );
+              })}
+            </div>
+          </div>
+        )}
+          </>
+        )}
+      </div>
+      {/* visual separator that doesn't affect inner measurements */}
+  <div aria-hidden className="absolute top-0 right-0 h-full w-px bg-slate-800" />
+    </aside>
+  );
+}

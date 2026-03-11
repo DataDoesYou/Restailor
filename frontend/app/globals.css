@@ -1,0 +1,219 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html, body, :root {
+	height: 100%;
+}
+
+/* Beautiful dark scrollbars for all pages */
+* {
+	/* Firefox */
+	scrollbar-width: thin;
+	scrollbar-color: rgba(148, 163, 184, 0.5) rgba(15, 23, 42, 0.3); /* slate-400/50 on slate-900/30 */
+}
+
+/* Chromium / WebKit */
+*::-webkit-scrollbar {
+	width: 12px;
+	height: 12px;
+}
+
+*::-webkit-scrollbar-track {
+	background: rgba(15, 23, 42, 0.3); /* slate-900/30 - very dark track */
+	border-radius: 10px;
+}
+
+*::-webkit-scrollbar-thumb {
+	background: rgba(148, 163, 184, 0.5); /* slate-400/50 - medium gray thumb */
+	border-radius: 10px;
+	border: 2px solid rgba(15, 23, 42, 0.3); /* creates padding effect */
+}
+
+*::-webkit-scrollbar-thumb:hover {
+	background: rgba(203, 213, 225, 0.7); /* slate-300/70 - lighter on hover */
+}
+
+*::-webkit-scrollbar-thumb:active {
+	background: rgba(226, 232, 240, 0.8); /* slate-200/80 - even lighter when dragging */
+}
+
+:root {
+	/* Dark theme is the only mode */
+	--ring: #93c5fd; /* sky-300 */
+	--muted: #0b1220; /* near-surface */
+	--muted-foreground: #9aa4b2; /* slate-400-ish */
+	--input: #1f2937; /* gray-800 */
+	--accent: #0f141d; /* custom dark panel */
+	--foreground: #e5e7eb; /* gray-200 */
+
+	/* Chart tokens (dark) */
+	--chart-axis: #9aa4b2; /* slate-400 */
+	--chart-grid: rgba(148,163,184,0.2);
+	--chart-legend: #cbd5e1; /* slate-300 */
+	--chart-tooltip-bg: #0f172a; /* slate-900 */
+	--chart-tooltip-fg: #e5e7eb; /* gray-200 */
+	--chart-tooltip-border: #1f2937; /* gray-800 */
+	/* Hover/cursor overlays for charts */
+	--chart-cursor: rgba(255,255,255,0.06); /* subtle light fill on dark */
+	--chart-cursor-line: rgba(148,163,184,0.35); /* soft line for line/area charts */
+	--chart-1: #60a5fa; /* sky-400 */
+	--chart-2: #34d399; /* emerald-400 */
+	--chart-3: #f59e0b; /* amber-500 */
+	--chart-4: #a78bfa; /* violet-400 */
+	--chart-5: #ef4444; /* red-500 */
+	--chart-6: #22d3ee; /* cyan-400 */
+}
+
+.text-muted-foreground { color: var(--muted-foreground); }
+.bg-muted { background-color: var(--muted); }
+.focus\:ring-ring:focus { box-shadow: 0 0 0 1px var(--ring); }
+.border-input { border-color: var(--input); }
+.bg-accent { background-color: var(--accent); }
+.text-foreground { color: var(--foreground); }
+
+/* Parity tweaks for dark theme placeholders/inputs */
+::placeholder { color: var(--muted-foreground); opacity: 1; }
+textarea, input { background-color: transparent; }
+
+/* Ensure links wrap properly */
+a {
+	word-wrap: break-word;
+	overflow-wrap: break-word;
+}
+
+/* Default button style (Register-style) applied app-wide; specific buttons can override via utilities */
+button:not(.btn-plain) {
+	border-radius: 0.25rem; /* Tailwind rounded */
+	background-color: #334155; /* slate-700 */
+	padding: 0.625rem 0.75rem; /* py-2.5 px-3 */
+	transition: background-color 150ms ease-in-out; /* transition-colors */
+}
+button:not(.btn-plain):hover { background-color: #475569; } /* slate-600 */
+button:not(.btn-plain):active { background-color: #64748b; } /* slate-500 */
+button:disabled { opacity: .5; }
+
+/* Link-like buttons (text only) */
+button.btn-plain {
+	background: transparent;
+	padding: 0; /* keep it text-like */
+	border-radius: 0; 
+	color: #cbd5e1; /* slate-300 */
+	text-decoration: underline;
+	transition: color 150ms ease-in-out;
+}
+button.btn-plain:hover { color: #ffffff; }
+button.btn-plain:active { color: #94a3b8; } /* slate-400 */
+
+/* Subtle, hover-only scrollbars for textboxes and opt-in containers
+	 - Hidden by default, appear as thin rounded thumb on hover
+	 - Applies to all <textarea> elements and any element with .hover-thin-scrollbar */
+textarea,
+.hover-thin-scrollbar {
+	/* Firefox: keep width constant, hide thumb by default */
+	scrollbar-width: thin;
+	scrollbar-color: transparent transparent; /* hide until hover */
+
+	/* Color tokens (can be overridden per container) */
+	--sb-thumb: rgba(148, 163, 184, 0.45); /* slate-400/50 */
+	--sb-thumb-hover: rgba(203, 213, 225, 0.7); /* slate-300/70 */
+
+		/* Reserve right-side gutter only to prevent left shift */
+		scrollbar-gutter: stable;
+}
+
+textarea:hover,
+.hover-thin-scrollbar:hover {
+		/* Firefox: reveal thumb on hover */
+		scrollbar-color: rgba(148,163,184,0.4) transparent;
+}
+
+/* Chromium / WebKit */
+textarea::-webkit-scrollbar,
+.hover-thin-scrollbar::-webkit-scrollbar {
+		width: 8px;  /* keep width constant to avoid reflow */
+		height: 8px;
+}
+
+textarea:hover::-webkit-scrollbar,
+.hover-thin-scrollbar:hover::-webkit-scrollbar {
+		width: 8px;
+		height: 8px;
+}
+
+textarea::-webkit-scrollbar-track,
+.hover-thin-scrollbar::-webkit-scrollbar-track {
+	background: transparent; /* no visible track */
+}
+
+textarea::-webkit-scrollbar-thumb,
+.hover-thin-scrollbar::-webkit-scrollbar-thumb {
+	background-color: transparent; /* hidden by default */
+	border-radius: 9999px;
+	border: 2px solid transparent; /* creates padding, keeps thumb slim */
+	background-clip: padding-box;
+}
+
+textarea:hover::-webkit-scrollbar-thumb,
+.hover-thin-scrollbar:hover::-webkit-scrollbar-thumb {
+	background-color: var(--sb-thumb-hover);
+}
+
+/* Disable textarea resize handles globally */
+textarea {
+	resize: none;
+}
+
+/* No light mode; .dark class is not required anymore */
+
+/* Utilities */
+.border-outline-var { border-color: var(--chart-tooltip-border); }
+.border-accent-var { border-color: var(--chart-1); }
+.text-legend { color: var(--chart-legend); }
+
+/* Hide number input spinner arrows */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+	-webkit-appearance: none;
+	appearance: none;
+	margin: 0;
+}
+
+/* Firefox */
+input[type="number"] {
+	-moz-appearance: textfield;
+	appearance: textfield;
+}
+
+/* Cloudflare Turnstile responsive fix for narrow containers */
+.cf-turnstile {
+	max-width: 100%;
+	overflow: visible !important;
+	min-height: 65px;
+	display: block !important;
+	visibility: visible !important;
+	position: relative !important;
+}
+
+.cf-turnstile iframe {
+	max-width: 100%;
+	transform-origin: 0 0;
+	display: block !important;
+	visibility: visible !important;
+}
+
+/* Mobile scaling for very narrow screens */
+@media (max-width: 320px) {
+	.cf-turnstile iframe {
+		transform: scale(0.85);
+		transform-origin: 0 0;
+	}
+}
+
+@media (max-width: 280px) {
+	.cf-turnstile iframe {
+		transform: scale(0.75);
+		transform-origin: 0 0;
+	}
+}
+

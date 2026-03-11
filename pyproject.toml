@@ -1,0 +1,76 @@
+[tool.poetry]
+name = "restailor"
+version = "0.1.0"
+description = "Next.js + FastAPI app to tailor resumes with API and background tasks"
+authors = ["Restailor Contributors <opensource@example.com>"]
+packages = [{ include = "restailor" }]
+
+[tool.poetry.dependencies]
+python = ">=3.10,<3.14"
+fastapi = "^0.116.1"
+uvicorn = {extras = ["standard"], version = "^0.30.0"}
+arq = "^0.25.0"
+redis = "^5.0.7"
+psycopg2-binary = "^2.9.9"
+sqlalchemy = "^2.0.31"
+alembic = "^1.13.2"
+httpx = ">=0.28.1,<1.0.0"
+sse-starlette = "^3.0.2"
+keyring = ">=24.0.0"
+requests = "^2.32.0"
+slowapi = "^0.1.9"
+tomli = {version = "^2.0.1", python = "<3.11"}
+markdown = "^3.8.2"
+openai = "^1.99.0"
+anthropic = "^0.75.0"
+google-genai = "^1.31.0"
+google-generativeai = ">=0.7.2"
+fastapi-mail = "^1.4.1"
+python-dotenv = "^1.0.1"
+pyjwt = "^2.9.0"
+passlib = {extras = ["bcrypt"], version = "^1.7.4"}
+python-multipart = "^0.0.20"
+bcrypt = "^4.1.2"
+disposable-email-domains = "^0.0.104"
+pywin32-ctypes = {version = "^0.2.3", markers = "sys_platform == 'win32'"}
+pyotp = "^2.9.0"
+qrcode = {extras = ["pil"], version = "^8.2"}
+itsdangerous = "^2.2.0"
+aiosmtplib = "^3.0.2"
+email-validator = "^2.3.0"
+cryptography = "^45.0.6"
+webauthn = "^2.0.0"
+tiktoken = "^0.8.0"
+stripe = "^13.0.1"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.3.1"
+httpx = ">=0.28.1,<1.0.0"
+black = "^24.8.0"
+ruff = "^0.5.6"
+pip-audit = "^2.9.0"
+playwright = "^1.54.0"
+pytest-asyncio = "^0.24.0"
+testcontainers = "^4.7.2"
+psycopg2-binary = "^2.9.11"
+pytest-playwright = "^0.7.1"
+bandit = "^1.9.2"
+
+[tool.ruff]
+# Respect existing code style but enforce on new changes.
+target-version = "py310"
+line-length = 120
+exclude = [
+	"worker.py",  # legacy style; too many E701/E702, ignored for now
+	"__pycache__",
+	".venv",
+	"tests",
+]
+
+[tool.ruff.lint]
+select = ["E", "F", "I"]
+ignore = []
+
+[build-system]
+requires = ["poetry-core>=1.8.0"]
+build-backend = "poetry.core.masonry.api"

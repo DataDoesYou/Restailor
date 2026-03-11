@@ -1,0 +1,521 @@
+[app]
+auth_required = true
+demo_user_email = "demo@example.com"
+client_id_header = "X-Client-Id"
+job_token_header = "X-Job-Token"
+sse_keepalive_ms = 15000
+# Optional list of allowed CORS origins for API; if empty, dev-friendly defaults are used
+allowed_origins = []
+
+[app.diagnostics]
+enable_reload_detection = false  # Show double-reload diagnostic banner on frontend
+
+# Root limits table (add user_active_job_cap override; child tables follow below)
+[limits]
+user_active_job_cap = 10
+
+[limits.text]
+char_cap_resume = 120000
+char_cap_jd = 80000
+max_urls_per_request = 5                # allow normal profiles
+url_over_cap_action = "reject"          # "neutralize" or "reject"
+max_duplicate_lines = 100
+max_repeat_run = 5000
+
+[limits.tokens]
+input_token_cap = 50000
+daily_token_budget = 1200000
+
+[limits.role_outputs]                   # per-role hard output caps
+tailor = 4096
+fit    = 4096
+judge  = 16384
+
+[limits.rate]
+ip_rate_minute = 120
+ip_rate_hour   = 1200
+tailor_minute  = 30
+tailor_hour    = 200
+fit_minute     = 60
+fit_hour       = 400
+
+[limits.concurrency]
+per_user = 10
+global   = 100
+# similarity and content-dedupe are OFF (users can run identical inputs back-to-back)
+similarity_mode = "off"              # off | report | rate_only | cache
+content_dedupe_window_sec = 0
+
+[timeouts]
+connect_ms = 5000
+write_ms   = 30000
+first_byte_ms = 30000
+overall_ms = 420000
+stream_stall_abort_ms = 20000
+
+[timeouts_role.tailor]
+overall_ms = 420000
+stream_stall_abort_ms = 20000
+[timeouts_role.fit]
+overall_ms = 420000
+stream_stall_abort_ms = 20000
+[timeouts_role.judge]
+overall_ms = 540000
+stream_stall_abort_ms = 30000
+
+[retry]
+max_attempts = 2
+base_backoff_ms = 250
+
+[abuse]                                  # pre and post
+max_codeblock_lines = 120
+max_base64_bytes = 800000
+max_echo_ratio = 0.45
+max_quote_chars = 1200
+ban_control_chars = true
+ban_injection_phrases = true             # block common prompt-injection phrases
+require_idempotency_key = false          # require on create endpoints only (left false to avoid breaking legacy clients/tests)
+
+[abuse.ip_asn]
+# classification knobs
+asn_header = "X-ASN"          # already supported in README; keep honoring it
+org_header = "X-ASN-Org"      # optional org hint from proxy
+
+# caps per 24h window
+cap_residential_per_ip = 5
+cap_university_per_ip  = 20
+cap_unknown_per_ip     = 3
+cap_datacenter_per_ip  = 1
+
+# action ladder after cap exceeded
+#   allow_trial → allow_only_with_2fa → require_payment → hard_block
+over_cap_residential = "allow_only_with_2fa"
+over_cap_university  = "allow_only_with_2fa"
+over_cap_unknown     = "require_payment"
+over_cap_datacenter  = "require_payment"
+
+# ASN/org classification helpers
+university_org_keywords = ["University", "College", "Institute of Technology", ".edu"]
+datacenter_org_keywords = [
+    "Amazon", "AWS", "Google Cloud", "GCP", "Microsoft Azure", 
+    "DigitalOcean", "Hetzner", "OVH", "Scaleway", "Vultr", "Linode",
+    "Oracle Cloud", "Alibaba Cloud", "IBM Cloud", "Contabo",
+    "Hostinger", "HostGator", "Cloudflare Workers", "Akamai",
+    "Datacamp", "ColoGuard", "Hurricane Electric", "Choopa"
+]
+# allow explicit ASN lists to override keywords
+university_asns = []
+datacenter_asns = []
+
+# windows (seconds)
+window_seconds = 86400
+
+[abuse_role.tailor]
+# Allow more reuse of phrasing from the base resume to avoid premature clamping.
+max_echo_ratio = 0.55
+max_quote_chars = 2400
+[abuse_role.fit]
+max_echo_ratio = 0.45
+[abuse_role.judge]
+max_echo_ratio = 0.45
+
+[providers.default]
+stream = true
+temperature_tailor = 0.4
+temperature_fit    = 0.2
+temperature_judge  = 0.2
+## Stop sequences
+# Use a single, explicit static sentinel. Do not include dynamic placeholders here;
+# the worker passes a per-job end_marker at runtime for client-side clamping.
+stop_sequences = ["\n### END OUTPUT\n"]
+
+[providers.openai]
+enabled = true
+model_tailor = "gpt-5.2"
+model_fit    = "gpt-5.2"
+model_judge  = "gpt-5.2"
+# Additional models for allowlist (used by multi-model feature)
+model_tailor_alt = "gpt-5.2-chat-latest"
+model_fit_alt = "gpt-5.2-chat-latest"
+model_judge_alt = "gpt-5.2-chat-latest"
+model_tailor_alt2 = "gpt-4.1"
+model_fit_alt2 = "gpt-4.1"
+model_judge_alt2 = "gpt-4.1"
+model_tailor_alt3 = "gpt-5"
+model_fit_alt3 = "gpt-5"
+model_judge_alt3 = "gpt-5"
+reasoning_effort_tailor = "medium"    # applies to gpt-5 and legacy models
+reasoning_effort_fit    = "medium"
+reasoning_effort_judge  = "medium"
+gpt5_disable_external_cancel = false    # enable cancel button for GPT-5 models
+
+[providers.anthropic]
+enabled = true
+model_tailor = "claude-opus-4-5-20251101"
+model_fit    = "claude-opus-4-5-20251101"
+model_judge  = "claude-opus-4-5-20251101"
+# Additional models for allowlist
+model_tailor_alt = "claude-sonnet-4-5-20250929"
+model_fit_alt = "claude-sonnet-4-5-20250929"
+model_judge_alt = "claude-sonnet-4-5-20250929"
+
+## Extended thinking (Claude Opus 4.5+)
+## budget_tokens: 1024 to 200000 (max thinking tokens per request)
+## Start small and increase as needed; above 32k use batch processing
+## Minimum: 1024 tokens
+thinking_budget_tailor = 1024
+thinking_budget_fit    = 1024
+thinking_budget_judge  = 1024
+
+## Effort parameter (Claude Opus 4.5 only, beta)
+## Values: "high" (default/max quality), "medium", "low" (faster/cheaper)
+effort_tailor = "high"
+effort_fit    = "high"
+effort_judge  = "high"
+
+[providers.google]
+enabled = true
+model_tailor = "gemini-3-pro-preview"
+model_fit    = "gemini-3-pro-preview"
+model_judge  = "gemini-3-pro-preview"
+# Additional models for allowlist
+model_tailor_alt = "gemini-3-flash-preview"
+model_fit_alt = "gemini-3-flash-preview"
+model_judge_alt = "gemini-3-flash-preview"
+
+## Gemini 3.0+ settings
+## thinking_level: "low" or "high" (default: "low")
+## include_thoughts: true or false (default: false)
+thinking_level_tailor = "high"
+thinking_level_fit    = "high"
+thinking_level_judge  = "high"
+include_thoughts_tailor = false
+include_thoughts_fit    = false
+include_thoughts_judge  = false
+
+## Flash model minimum output token escalation (only applies when model name contains "flash").
+## If the per-role hard cap in [limits.role_outputs] is LOWER than these values, the builder
+## will raise (escalate) max_output_tokens up to this flash_min_* value to avoid premature
+## FinishReason.MAX_TOKENS truncation seen with gemini-2.5-flash.
+## To disable escalation, set flash_min_* equal to (or below) the corresponding role cap.
+flash_min_tailor = 8192   # Ensure at least 8K output tokens for Flash tailor runs (role cap currently 4096)
+flash_min_fit    = 8192   # Ensure at least 8K output tokens for Flash fit runs (role cap currently 4096)
+flash_min_judge  = 16384  # Judge already has 16384 cap; keeps parity / explicitness for flash
+
+[providers.xai]
+enabled = true
+model_tailor = "grok-4"
+model_fit    = "grok-4"
+model_judge  = "grok-4"
+# Additional models for allowlist
+model_tailor_alt = "grok-4-1-fast-reasoning"
+model_fit_alt = "grok-4-1-fast-reasoning"
+model_judge_alt = "grok-4-1-fast-reasoning"
+
+[runs]
+registry_ttl_sec = 86400
+
+[diagnostics]
+enable_diag_sse = false
+diag_token = ""
+allow_ips = ["127.0.0.1"]
+# UI debug HUD and structured logging gate. When true, logging/HUD can be enabled
+# without query params by the frontend. You can still force it via ?rtDebug=1.
+rt_debug_ui = true
+
+# Performance/observability knobs
+[perf]
+# Log SQL queries slower than this many milliseconds
+sql_slow_ms = 50.0
+
+# Redis connection for queues/captcha state
+[redis]
+host = "127.0.0.1"
+port = 6379
+database = 0
+# password = ""
+
+# Security hardening options
+[security]
+# When true, the app will fail fast at startup if VERIFY_SECRET_KEY and RESET_SECRET_KEY
+# are not explicitly configured via keyring or environment variables (no implicit fallbacks).
+strict_secrets = true
+# Secrets must be provided via OS keyring or environment in production
+# Leave these empty in the repo to avoid accidental leakage.
+totp_fernet_key = ""                   # prefer keyring TOTP_FERNET_KEY or env
+remember_signer_secret = ""            # prefer keyring SECURITY_REMEMBER_SIGNER_SECRET or env
+
+
+
+# Short-lived re-auth (step-up) ticket
+[security.stepup]
+# TTL in seconds for step-up tickets; can be overridden by env STEPUP_TTL_SECONDS
+ttl_seconds = 300
+
+# WebAuthn (passkeys) configuration
+[security.webauthn]
+# Relying party id (domain). In dev, typically 'localhost'. In production, set to your domain.
+rp_id = "localhost"
+# Display name shown to the authenticator
+rp_name = "Resume Tailor"
+# Origins allowed for WebAuthn ceremonies (frontend origins)
+origins = ["http://localhost:3000"]
+# preferred | required | discouraged
+user_verification = "preferred"
+# none | indirect | direct | enterprise (keep 'none' unless you specifically need attestation)
+attestation = "none"
+# Timeout (ms) for platform authenticator operations
+timeout_ms = 60000
+# Challenge management (Redis/memory TTL and challenge size)
+challenge_ttl_seconds = 180
+challenge_bytes = 32
+# Allowed COSE algorithms (default: ES256, RS256). To change, set comma-separated WEBAUTHN_ALGS env
+# or edit this list. Examples: strict [-7], broad [-7, -257], add EdDSA (-8) if supported.
+algs = [-7, -257]
+
+# Trusted device ("remember this device") defaults
+# Legacy fields kept for back-compat with older builds; new installs should prefer [security.remember] below.
+remember_days = 30
+# Optional: signer secret for trusted device cookies.
+# Prefer setting via keyring SECURITY_REMEMBER_SIGNER_SECRET or env; keep empty in repo.
+remember_signer_secret = ""
+
+# Granular trusted device policy
+[security.remember]
+days = 30
+max_devices_per_user = 5
+admin_days = 30
+admin_max_devices = 2
+bind_user_agent = true
+bind_ip_prefix = 24
+rotate_on_password_change = true
+rotate_on_2fa_change = true
+# Enforcement flags (pre-prod defaults):
+# - End users: audit-only (no strict enforcement)
+# - Admins: enforce UA and IP prefix match when validating trusted devices
+enforce_user_ua = false
+enforce_user_ip_prefix = false
+enforce_admin_ua = true
+enforce_admin_ip_prefix = true
+
+# Password policy
+[security.password]
+min_length = 8
+require_symbols = false
+
+# Multi-factor authentication defaults
+[security.mfa]
+# TOTP (app-based) configuration
+totp_window = 1                       # acceptable step drift
+totp_step_seconds = 30                # 30s step
+totp_digits = 6                       # number of digits in TOTP codes
+totp_max_attempts = 5                 # lock after N consecutive failures
+totp_lockout_seconds = 300            # 5 minutes lockout
+# Email OTP configuration
+email_otp_ttl_seconds = 600           # validity of an email OTP
+email_otp_cooldown_seconds = 60       # min seconds between resend requests
+email_otp_max_attempts = 5            # max verify attempts before temporary lock
+email_otp_lockout_seconds = 300       # lockout when attempts exceeded
+email_otp_digits = 6                  # number of digits in email OTP
+
+# Recovery codes
+recovery_codes_count = 10             # how many one-time recovery codes to issue
+
+# Disallow email OTP for admin accounts (prefer WebAuthn/TOTP)
+admin_allow_email_otp = false
+
+# Optional CAPTCHA escalation for email OTP abuse
+[security.mfa.email_otp_captcha]
+# Require CAPTCHA after recent OTP verification failures/backoff is detected
+required_after_backoff = false
+# CAPTCHA provider for escalation (defaults to login captcha provider if empty)
+provider = "turnstile"                # or "recaptcha"
+# Mark client as OK for this many seconds after a successful CAPTCHA check
+ok_ttl_seconds = 120
+
+# --- Signup / Registration controls ---
+[auth.signup]
+# Per-IP signup rate (SlowAPI rate string); set to "off" to effectively disable
+ip_rate = "3/day"
+# Require CAPTCHA during signup (mirrors login CAPTCHA)
+captcha_required = true
+# How long (seconds) to mark a client as CAPTCHA-OK after a successful check
+# Reduced to 30s to prevent CAPTCHA bypass via reuse window
+captcha_ok_ttl_seconds = 30
+# UI: attempts/interval to poll backend for CAPTCHA readiness before calling /signup
+captcha_ready_poll_attempts = 6
+captcha_ready_poll_interval_ms = 150
+# Max accounts permitted per browser fingerprint
+# Set to 1 to prevent duplicate trial abuse via multiple emails on same device
+# Review application history and analytics data if you need to investigate existing abuse
+fingerprint_max_accounts = 1
+# Fingerprint hashing/derivation knobs
+fingerprint_hash_len = 32              # hex chars kept from sha256
+fingerprint_ipv4_prefix_len = 24       # derive /24 prefix
+fingerprint_ipv6_hextets = 4           # number of IPv6 hextets to keep
+
+# --- Destructive endpoints (delete-data / delete-account) ---
+[auth.destructive]
+
+# --- Signup trial grant: abuse prevention only ---
+# NOTE: Actual credit amounts, trial settings, and enable/disable are controlled by admin at runtime.
+# These are ONLY abuse prevention limits.
+[credits]
+# Abuse prevention windows and caps
+grant_window_ip_days = 1
+grant_window_email_days = 7
+grant_window_fingerprint_days = 30
+max_per_ip_per_day = 3
+max_per_asn_per_day = 50
+rate = "3/hour"
+
+# Trial policy requirements (not amounts)
+[credits.trial]
+require_2fa = false
+allow_skip_if_paid = true
+cooldown_days = 36500  # ~100 years, effectively once per account ever
+
+# --- Auth & Email flows ---
+[auth.verify]
+# Per-user cooldown between verification email sends
+cooldown_seconds = 300                 # set 0 to disable cooldown
+# Sliding window and cap for verification email sends
+limit_window_seconds = 600             # window length for counting sends
+max_per_window = 5                     # max sends within the window
+# Verification token validity (minutes)
+token_expire_minutes = 60
+
+[auth.reset]
+# Rate limit for password reset request endpoint (SlowAPI rate string)
+ip_rate = "5/hour"                    # set to "off" to effectively disable
+# Per-user email cooldown enforced via Redis TTL (seconds)
+per_user_cooldown_seconds = 300        # set 0 to disable cooldown
+# Reset token validity (minutes)
+token_expire_minutes = 30
+
+[auth.login]
+# Rate limit for login attempts (SlowAPI rate string)
+ip_rate = "10/minute;100/hour"        # set to "off" to effectively disable
+fail_window_seconds = 900              # sliding window for counting failures
+backoff_base_seconds = 2               # exponential backoff base (2^n * base)
+backoff_max_seconds = 900              # cap backoff at this many seconds
+lockout_after = 0                      # hard lock after N fails (0 disables)
+lockout_seconds = 900                  # lockout duration when triggered
+
+[auth.login.captcha]
+# When exposing publicly, attach a CAPTCHA to login
+provider = "turnstile"                 # "recaptcha" | "turnstile" | "" (disabled)
+required = true
+site_key = ""                          # Provide via env (NEXT_PUBLIC_TURNSTILE_SITE_KEY)
+
+[auth.tokens]
+# Centralized token expiries
+access_token_expire_minutes = 60
+reauth_token_expire_minutes = 5
+pending2_token_expire_minutes = 15
+refresh_token_expire_days = 30
+
+[testing]
+# Use mock streaming to avoid real model calls during local dev/E2E
+mode = "live"                 # "mock" or "live"
+mock_chunk_text = "… "        # what to stream each chunk
+mock_chunk_count = 80          # how many chunks to emit
+mock_emit_delay_ms = 30        # delay between chunks
+
+# Judge alias visibility (test flag)
+# - When false (default), hide alias codes and do NOT append the alias legend in judge outputs.
+# - When true, show alias codes inline (e.g., "Model X [alias: RABC123]") and append the legend at the end.
+show_judge_alias_codes = false
+
+# Model-specific timeout overrides
+[timeouts_model.openai.gpt-5]
+first_byte_ms = 120000
+stream_stall_abort_ms = 45000
+
+# Preserve previous Gemini floors via config (no hardcoding in code)
+[timeouts_model.gemini."gemini-3-pro-preview"]
+first_byte_ms = 60000
+stream_stall_abort_ms = 45000
+
+[timeouts_model.gemini."gemini-3-flash-preview"]
+first_byte_ms = 60000
+stream_stall_abort_ms = 45000
+
+[pricing]
+multiplier = 5.0
+currency = "USD"
+
+[pricing.models]
+"claude-sonnet-4-5-20250929.input" = 3.00
+"claude-sonnet-4-5-20250929.output" = 15.00
+"claude-opus-4-5-20251101.input" = 5.00
+"claude-opus-4-5-20251101.output" = 25.00
+"claude-haiku-4-5-20251001.input" = 1.00
+"claude-haiku-4-5-20251001.output" = 5.00
+"gemini-3-flash-preview.input" = 0.50
+"gemini-3-flash-preview.output" = 3.00
+"gemini-3-pro-preview.input" = 1.25
+"gemini-3-pro-preview.output" = 10.00
+"gpt-4.1.input" = 2.00
+"gpt-4.1.output" = 8.00
+"gpt-5.input" = 1.25
+"gpt-5.output" = 10.00
+"gpt-5.1.input" = 1.25
+"gpt-5.1.output" = 10.00
+"gpt-5.1-instant.input" = 1.25
+"gpt-5.1-instant.output" = 10.00
+"gpt-5.1-thinking.input" = 1.25
+"gpt-5.1-thinking.output" = 10.00
+"gpt-5.2.input" = 1.75
+"gpt-5.2.output" = 14.00
+"gpt-5.2-chat-latest.input" = 1.75
+"gpt-5.2-chat-latest.output" = 14.00
+"grok-4-1-fast-reasoning.input" = 0.20
+"grok-4-1-fast-reasoning.output" = 0.50
+"grok-4.input" = 3.00
+"grok-4.output" = 15.00
+
+# Back-compat aliases from display names to provider model IDs.
+[pricing.aliases]
+"Claude Sonnet 4.5" = "claude-sonnet-4-5-20250929"
+"Claude Opus 4.5" = "claude-opus-4-5-20251101"
+"Claude Haiku 4.5" = "claude-haiku-4-5-20251001"
+"Gemini 3 Flash" = "gemini-3-flash-preview"
+"Gemini 2.5 Flash" = "gemini-3-flash-preview"
+"Gemini 3 Pro" = "gemini-3-pro-preview"
+"GPT-4.1" = "gpt-4.1"
+"GPT-5" = "gpt-5"
+"Grok 4.1 Fast" = "grok-4-1-fast-reasoning"
+"Grok 4" = "grok-4"
+
+# --- Stripe (optional; disabled by default) ---
+[stripe]
+enabled = true
+# Webhook secret should be provided via env or keyring in production; default empty
+webhook_secret = ""
+
+# --- Email / SMTP Configuration ---
+[email]
+# SMTP server settings (non-secret defaults)
+server = "smtp-relay.brevo.com"
+port = 587
+from = "noreply@example.com"
+from_name = "Resume Tailor"
+
+# TLS/SSL settings
+starttls = true
+ssl_tls = false
+use_credentials = true
+
+# Note: MAIL_USERNAME and MAIL_PASSWORD should be set via Doppler/environment
+# These settings can be overridden by environment variables:
+#   MAIL_SERVER, MAIL_PORT, MAIL_FROM, MAIL_FROM_NAME,
+#   MAIL_STARTTLS, MAIL_SSL_TLS, MAIL_USE_CREDENTIALS,
+#   MAIL_USERNAME (secret), MAIL_PASSWORD (secret)
+
+# UI settings
+[ui]
+# Cache credits display to avoid per-render /users/me calls
+credits_ttl_seconds = 120
+# Max recursion/scan depth when walking provider SDK objects to extract text on demo page
+deep_text_scan_limit = 10000

@@ -1,0 +1,15 @@
+{
+  "credits_signup_grant": {
+    "enable_signup_grant": false,
+    "signup_grant_cents": 0,
+    "grant_window_ip_days": 1,
+    "grant_window_email_days": 7,
+    "grant_window_fingerprint_days": 30
+  },
+  "features": {
+    "single_source_of_truth": true
+  },
+  "diagnostics": {
+    "enable_reload_detection": false
+  }
+}

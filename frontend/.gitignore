@@ -1,0 +1,7 @@
+.next
+.turbo
+dist
+build
+coverage
+*.tsbuildinfo
+node_modules

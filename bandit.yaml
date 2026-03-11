@@ -1,0 +1,21 @@
+# Bandit configuration
+
+exclude_dirs:
+  - .venv
+  - tests
+  - e2e
+  - alembic
+  - legacy
+  - scripts
+
+skips:
+  - B101
+  - B110
+  - B112
+  - B113
+  - B105
+  - B106
+  - B608
+  - B404
+  - B603
+

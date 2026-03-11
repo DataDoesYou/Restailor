@@ -1,0 +1,19 @@
+{
+  "name": "restailor-e2e",
+  "private": true,
+  "version": "0.0.0",
+  "description": "E2E tests for Restailor using Playwright",
+  "scripts": {
+    "test": "playwright test -c playwright.config.js",
+    "test:headed": "PWDEBUG=1 playwright test --headed",
+    "install-playwright": "npx playwright install --with-deps"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.48.0",
+    "@types/node": "^22.7.4",
+    "kill-port": "^2.0.1"
+  },
+  "dependencies": {
+    "restailor-root": "file:.."
+  }
+}

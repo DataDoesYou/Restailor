@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Quick /fit Probe</title>
+<style>
+body { font-family: system-ui, sans-serif; margin: 1rem; max-width: 800px; }
+label { display:block; margin-top: .6rem; font-weight: 600; }
+textarea { width:100%; height:90px; }
+input[type=text], input[type=password] { width:100%; }
+button { margin-top:.8rem; padding:.5rem 1rem; }
+pre { background:#111; color:#0f0; padding: .75rem; overflow:auto; max-height:300px; }
+small { color:#555; }
+.flex { display:flex; gap:.75rem; }
+.flex > div { flex:1; }
+</style>
+</head>
+<body>
+<h1>/fit Debug Probe</h1>
+<p>Local helper to signup/login then call <code>/fit</code> and show raw JSON. Works against a dev server at <code>http://localhost:8000</code>.</p>
+<p><strong>Note:</strong> If CORS blocks requests when opened via <code>file://</code>, serve this file (e.g. <code>python -m http.server</code>) so origin is <code>http://localhost:8000</code> or add CORS to the API.</p>
+
+<label>Base URL</label>
+<input id="base" type="text" value="http://localhost:8000" />
+
+<div class="flex">
+  <div>
+    <label>Email</label>
+    <input id="email" type="text" value="user_test@example.com" />
+  </div>
+  <div>
+    <label>Password</label>
+    <input id="password" type="password" value="Str0ngPass!123" />
+  </div>
+</div>
+
+<label>Resume Text</label>
+<textarea id="resume">Sample resume text.</textarea>
+<label>Job Description Text</label>
+<textarea id="jd">Sample job description text.</textarea>
+
+<div class="flex">
+  <div>
+    <label>Provider</label>
+    <input id="provider" type="text" value="openai" />
+  </div>
+  <div>
+    <label>Model ID</label>
+    <input id="model" type="text" value="gpt-4" />
+  </div>
+  <div>
+    <label>Client Id</label>
+    <input id="client" type="text" value="debug-fit" />
+  </div>
+</div>
+
+<button id="signupBtn">Signup (ignore if exists)</button>
+<button id="loginBtn">Login</button>
+<button id="fitBtn">Call /fit</button>
+
+<h2>Output</h2>
+<pre id="out">(waiting)</pre>
+
+<script>
+const out = document.getElementById('out');
+function log(msg) { out.textContent += msg + "\n"; }
+function set(msg) { out.textContent = msg + "\n"; }
+async function api(path, opts={}) {
+  const base = document.getElementById('base').value.replace(/\/$/, '');
+  return fetch(base + path, opts);
+}
+let token = null;
+async function signup() {
+  set('[signup]');
+  const body = {
+    username: document.getElementById('email').value,
+    password: document.getElementById('password').value
+  };
+  try {
+    const r = await api('/signup', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+    const t = await r.text();
+    log('Status: ' + r.status + '\n' + t);
+  } catch (e) { log('Error: ' + e); }
+}
+async function login() {
+  set('[login]');
+  const form = new URLSearchParams();
+  form.set('username', document.getElementById('email').value);
+  form.set('password', document.getElementById('password').value);
+  try {
+    const r = await api('/token', { method:'POST', headers:{}, body: form });
+    const text = await r.text();
+    log('Status: ' + r.status + '\n' + text);
+    if (r.ok) {
+      try { token = JSON.parse(text).access_token; log('Token cached.'); } catch { log('Parse token failed'); }
+    }
+  } catch (e) { log('Error: ' + e); }
+}
+async function fit() {
+  set('[fit]');
+  if (!token) { log('No token. Login first.'); return; }
+  const body = {
+    resume_text: document.getElementById('resume').value,
+    jd_text: document.getElementById('jd').value,
+    provider: document.getElementById('provider').value,
+    model_id: document.getElementById('model').value,
+    source_page: 'Probe'
+  };
+  const headers = {
+    'Content-Type':'application/json',
+    'Authorization': 'Bearer ' + token,
+    'X-Client-Id': document.getElementById('client').value,
+    'Idempotency-Key': crypto.randomUUID()
+  };
+  try {
+    const r = await api('/fit', { method:'POST', headers, body: JSON.stringify(body) });
+    const text = await r.text();
+    log('Status: ' + r.status + '\n' + text);
+  } catch (e) { log('Error: ' + e); }
+}
+
+document.getElementById('signupBtn').onclick = signup;
+document.getElementById('loginBtn').onclick = login;
+document.getElementById('fitBtn').onclick = fit;
+</script>
+</body>
+</html>

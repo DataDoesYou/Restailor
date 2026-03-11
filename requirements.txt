@@ -1,0 +1,15 @@
+openai>=1.99.0
+google-genai>=1.31.0
+httpx>=0.28.1,<1.0.0
+anthropic>=0.64.0
+google-generativeai>=0.7.2
+markdown>=3.6
+keyring>=24.0.0
+pywin32-ctypes; sys_platform == "win32"
+requests>=2.32.0
+slowapi>=0.1.9
+tomli>=2.0.1; python_version < "3.11"
+playwright>=1.45.0
+uvicorn>=0.30.0
+fastapi-mail>=1.4.1
+disposable-email-domains>=0.0.104

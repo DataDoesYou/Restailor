@@ -1,0 +1,5 @@
+version: 1.0
+ignore-cvss-severity-below: high
+ignore-vulnerabilities: []
+ignore-packages: []
+paths-ignored: []

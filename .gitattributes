@@ -1,0 +1,3 @@
+# Normalize line endings across platforms
+# Keep LF in the repo (Windows users can still have CRLF locally based on git config)
+* text=auto eol=lf

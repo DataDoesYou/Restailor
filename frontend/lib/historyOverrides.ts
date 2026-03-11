@@ -1,0 +1,201 @@
+// STEAM-LIKE: Only job ID/hash/token helpers remain - no optimistic overrides
+// Database is the single source of truth for all applied/stage flags
+
+const STORAGE_JOB_MAP = "rt_jobid_map";
+const STORAGE_JOB_HASH_MAP = "rt_jobhash_map";
+const STORAGE_JOB_TOKEN_MAP = "rt_jobtoken_map";
+const COOKIE_JOB_MAP = STORAGE_JOB_MAP;
+const COOKIE_JOB_HASH_MAP = STORAGE_JOB_HASH_MAP;
+
+function isBrowser(): boolean {
+  return typeof window !== "undefined" && typeof document !== "undefined";
+}
+
+type JsonLike = Record<string, unknown> | null | undefined;
+
+function readSessionJson<T>(key: string, fallback: T): T {
+  if (!isBrowser()) return fallback;
+  try {
+    const raw = window.sessionStorage.getItem(key);
+    if (!raw) return fallback;
+    return JSON.parse(raw) as T;
+  } catch {
+    return fallback;
+  }
+}
+
+function writeSessionJson(key: string, value: JsonLike) {
+  if (!isBrowser()) return;
+  try {
+    if (value == null) {
+      window.sessionStorage.removeItem(key);
+    } else {
+      window.sessionStorage.setItem(key, JSON.stringify(value));
+    }
+  } catch {}
+}
+
+function writeCookie(name: string, value: JsonLike, opts?: { maxAge?: number }) {
+  if (!isBrowser()) return;
+  try {
+    const secure = typeof location !== "undefined" && location.protocol === "https:" ? "; Secure" : "";
+    if (value == null || (typeof value === "object" && value && Object.keys(value).length === 0)) {
+      document.cookie = `${name}=; Path=/; Max-Age=0; SameSite=Lax${secure}`;
+      return;
+    }
+    const json = typeof value === "string" ? value : JSON.stringify(value);
+    const encoded = encodeURIComponent(json);
+    const maxAge = opts?.maxAge != null ? `; Max-Age=${opts.maxAge}` : "";
+    document.cookie = `${name}=${encoded}; Path=/; SameSite=Lax${secure}${maxAge}`;
+  } catch {}
+}
+
+function readCookieJson<T>(name: string): T | null {
+  if (!isBrowser()) return null;
+  try {
+    const ck = document.cookie || "";
+    const prefix = `${name}=`;
+    for (const part of ck.split(";")) {
+      const trimmed = part.trim();
+      if (!trimmed || !trimmed.startsWith(prefix)) continue;
+      const raw = trimmed.slice(prefix.length);
+      if (!raw) return null;
+      const decoded = decodeURIComponent(raw);
+      if (!decoded) return null;
+      return JSON.parse(decoded) as T;
+    }
+  } catch {}
+  return null;
+}
+
+function readOverrideMap<T extends Record<string, any>>(storageKey: string, cookieName: string): T {
+  const sessionVal = readSessionJson<T>(storageKey, {} as T) || ({} as T);
+  const cookieVal = readCookieJson<T>(cookieName) || ({} as T);
+  const merged = { ...cookieVal, ...sessionVal } as T;
+  if (isBrowser()) {
+    try {
+      writeSessionJson(storageKey, merged);
+    } catch {}
+  }
+  return merged;
+}
+
+// ===== JOB ID / HASH / TOKEN HELPERS =====
+
+export function readJobHashMap(): Record<string, string> {
+  return readOverrideMap<Record<string, string>>(STORAGE_JOB_HASH_MAP, COOKIE_JOB_HASH_MAP);
+}
+
+export function writeJobHashMap(map: Record<string, string>): void {
+  writeSessionJson(STORAGE_JOB_HASH_MAP, map);
+  writeCookie(COOKIE_JOB_HASH_MAP, map);
+}
+
+function readJobTokenMap(): Record<string, string> {
+  if (!isBrowser()) return {};
+  return readSessionJson<Record<string, string>>(STORAGE_JOB_TOKEN_MAP, {} as Record<string, string>);
+}
+
+function writeJobTokenMap(map: Record<string, string>): void {
+  writeSessionJson(STORAGE_JOB_TOKEN_MAP, map);
+}
+
+export function readJobToken(jobId: string | null | undefined): string | undefined {
+  if (!jobId || !isBrowser()) return undefined;
+  const map = readJobTokenMap();
+  return map[jobId] ?? undefined;
+}
+
+export function writeJobToken(jobId: string | null | undefined, token: string | null | undefined): void {
+  if (!jobId || !isBrowser()) return;
+  const id = String(jobId);
+  const map = { ...readJobTokenMap() };
+  if (!token) {
+    if (id in map) {
+      delete map[id];
+      writeJobTokenMap(map);
+    }
+    return;
+  }
+  if (map[id] === token) return;
+  map[id] = token;
+  writeJobTokenMap(map);
+}
+
+function sanitizeJobHashes(hashes?: string[] | null): string[] {
+  if (!Array.isArray(hashes)) return [];
+  const seen = new Set<string>();
+  for (const raw of hashes) {
+    if (typeof raw !== "string") continue;
+    const trimmed = raw.trim();
+    if (!trimmed) continue;
+    if (!seen.has(trimmed)) seen.add(trimmed);
+  }
+  return Array.from(seen);
+}
+
+export function readJobIdByHashes(hashes?: string[] | null): string | undefined {
+  if (!hashes || hashes.length === 0) return undefined;
+  if (!isBrowser()) return undefined;
+  const map = readJobHashMap();
+  for (const raw of hashes) {
+    if (!raw) continue;
+    const trimmed = raw.trim();
+    if (!trimmed) continue;
+    const mapped = map[trimmed];
+    if (mapped) return mapped;
+  }
+  return undefined;
+}
+
+export function writeJobIdForHashes(jobId: string, hashes?: string[] | null): void {
+  if (!isBrowser()) return;
+  const sanitized = sanitizeJobHashes(hashes);
+  if (!sanitized.length) return;
+  const map = { ...readJobHashMap() };
+  let changed = false;
+  for (const hash of sanitized) {
+    if (map[hash] === jobId) continue;
+    map[hash] = jobId;
+    changed = true;
+  }
+  if (changed) {
+    writeJobHashMap(map);
+  }
+}
+
+export function readJobIdMap(): Record<string, string> {
+  if (!isBrowser()) return {};
+  try {
+    const ck = document.cookie || "";
+    const raw = ck.split(";").map((s) => s.trim()).find((s) => s.startsWith(`${COOKIE_JOB_MAP}=`));
+    if (!raw) return {};
+    const json = decodeURIComponent(raw.split("=")[1] || "");
+    if (!json) return {};
+    const parsed = JSON.parse(json);
+    return parsed && typeof parsed === "object" ? (parsed as Record<string, string>) : {};
+  } catch {
+    return {};
+  }
+}
+
+export function writeJobId(
+  appliedKey: string,
+  jobId: string,
+  hashes?: string[] | null,
+  jobToken?: string | null
+): void {
+  if (!isBrowser()) return;
+  const map = { ...readJobIdMap() };
+  map[appliedKey] = jobId;
+  writeSessionJson(STORAGE_JOB_MAP, map);
+  writeCookie(COOKIE_JOB_MAP, map);
+  try {
+    writeJobIdForHashes(jobId, hashes);
+  } catch {}
+  try {
+    if (jobToken) {
+      writeJobToken(jobId, jobToken);
+    }
+  } catch {}
+}

@@ -1,0 +1,82 @@
+.pinnacle-theme {
+  /* VSCode-like deep blue palette */
+  --bg:            #0b0e14;   /* workbench */
+  --panel:         hsl(220 23% 13%);  /* editor background */
+  --panel-2:       hsl(220 20% 17%);  /* input, stripes */
+  --border:        hsl(220 16% 26%);
+  --shadow:        0 1px 2px rgba(0,0,0,.25);
+  --text:          hsl(210 30% 96%);
+  --muted:         hsl(220 12% 72%);
+  --subtle:        hsl(220 10% 64%);
+  --accent:        #0078d4;
+  --accent-600:    #006cbe;
+  --accent-700:    #005a9e;
+  --ring:          color-mix(in oklab, #0078d4 70%, white 30%);
+  --success:       hsl(160 70% 44%);
+  --warn:          hsl(38 95% 55%);
+  --danger:        hsl(0 78% 55%);
+  --radius:        6px;               /* subtle rounded corners */
+  --elev-0: 0 0 0 rgba(0,0,0,0);
+  --elev-1: 0 1px 2px rgba(0,0,0,.22);
+  --elev-2: 0 2px 6px rgba(0,0,0,.25);
+}
+
+/* VSCode-like primitives (local only) */
+.p-surface,
+.p-card { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); }
+.p-surface-2 { background: var(--panel-2); border: 1px solid var(--border); border-radius: var(--radius); }
+.p-text  { color: var(--text); }
+.p-muted { color: var(--muted); }
+.p-focus:focus-visible { outline: 2px solid transparent; box-shadow: 0 0 0 2px var(--ring); border-radius: var(--radius); }
+
+/* Buttons */
+.p-btn { display:inline-flex; align-items:center; justify-content:center; height:40px; padding:0 14px;
+         font-weight:600; letter-spacing:.01em; border-radius: var(--radius);
+         transition: transform .12s ease, opacity .12s ease, background-color .12s ease; box-shadow: var(--elev-1); }
+.p-btn--primary   { background: var(--accent); color:#fff; border:1px solid transparent; }
+.p-btn--primary:hover { background: var(--accent-600); box-shadow: var(--elev-2); transform: translateY(-1px); }
+.p-btn--primary:active{ background: var(--accent-700); box-shadow: var(--elev-1); transform: translateY(0); }
+.p-btn--secondary { background: var(--panel); color: var(--text); border:1px solid var(--border); }
+.p-btn--secondary:hover { background: var(--panel-2); box-shadow: var(--elev-2); transform: translateY(-1px); }
+.p-btn--secondary:active{ box-shadow: var(--elev-1); transform: translateY(0); }
+.p-btn--ghost     { background: transparent; color: var(--text); border:1px solid var(--border); }
+.p-btn--ghost:hover { background: color-mix(in oklab, var(--panel-2) 45%, transparent); box-shadow: var(--elev-2); transform: translateY(-1px); }
+.p-btn--ghost:active{ box-shadow: var(--elev-1); transform: translateY(0); }
+.p-btn:disabled   { opacity:.55; cursor:not-allowed; }
+
+/* Inputs */
+.p-input { background: var(--panel-2); border:1px solid var(--border); color:var(--text);
+           border-radius: var(--radius); height:40px; padding:0 12px; }
+.p-input::placeholder { color: var(--muted); opacity:1; }
+.p-input:hover { background: color-mix(in oklab, var(--panel-2) 92%, black 8%); }
+.p-input:focus { background: var(--panel); box-shadow: 0 0 0 2px var(--ring); }
+textarea.p-input { height:auto; padding:12px; line-height:1.4; }
+
+/* Cards, tables, progress */
+.p-table { width:100%; border-collapse:separate; border-spacing:0; }
+.p-table thead { background: var(--panel-2); border-bottom:1px solid var(--border); font-weight: 600; }
+.p-table th, .p-table td { padding:10px 12px; }
+.p-table tbody tr:nth-child(even) { background: color-mix(in oklab, var(--panel-2) 28%, transparent); }
+.p-table tbody tr:hover { background: color-mix(in oklab, var(--panel-2) 45%, transparent); }
+.p-progress { background: var(--panel-2); border:1px solid var(--border); height:12px; border-radius: var(--radius); }
+.p-progress > .bar { height:100%; background: var(--accent); border-radius: var(--radius); }
+
+/* Label overlay badges */
+.p-label { background: var(--panel-2); border:1px solid var(--border); color: var(--text);
+           padding:2px 6px; font-size:11px; border-radius: 6px; pointer-events: auto; }
+
+/* Hero gradient like VS Code activity glow */
+.p-hero { background: radial-gradient(1200px 600px at 10% -10%, hsl(212 100% 18%/.25), transparent 60%); position: relative; }
+.p-hero::before { content: ""; position: absolute; inset: 0 auto auto 0; height: 2px; width: 100%; background: linear-gradient(90deg, var(--accent), transparent 60%); border-top-left-radius: 6px; border-top-right-radius: 6px; }
+
+/* Spacing rhythm utilities */
+.p-stack { display: grid; row-gap: 16px; }
+.p-stack-lg { display: grid; row-gap: 22px; }
+
+/* Typography */
+.p-h2 { font-size: 1.15rem; line-height: 1.3; font-weight: 600; letter-spacing: -.01em; }
+.p-mute { color: var(--muted); font-size: .9rem; }
+
+/* Card hover elevation */
+.p-card { box-shadow: var(--elev-1); }
+.p-card:hover { box-shadow: var(--elev-2); }

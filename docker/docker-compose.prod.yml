@@ -1,0 +1,89 @@
+version: "3.9"
+
+name: restailor
+
+services:
+  postgres:
+    image: postgres:16
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER is required}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
+      POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB is required}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$POSTGRES_USER\" -d \"$POSTGRES_DB\""]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  redis:
+    image: redis:7
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+
+  api:
+    build:
+      context: ..
+      dockerfile: docker/api.Dockerfile
+      target: prod
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      POSTGRES_HOST: postgres
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      STRICT_SECRETS: ${STRICT_SECRETS:-1}
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+  arq:
+    build:
+      context: ..
+      dockerfile: docker/arq.Dockerfile
+      target: prod
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      POSTGRES_HOST: postgres
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      STRICT_SECRETS: ${STRICT_SECRETS:-1}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+  next:
+    build:
+      context: ../frontend
+      dockerfile: ../docker/next.Dockerfile
+      target: prod
+    restart: unless-stopped
+    environment:
+      # Public (browser) calls should hit your externally reachable API.
+      NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://localhost:8000}
+      # Internal SSR calls from inside Docker should use the service DNS.
+      INTERNAL_API_BASE_URL: ${INTERNAL_API_BASE_URL:-http://api:8000}
+    ports:
+      - "3000:3000"
+    depends_on:
+      api:
+        condition: service_started
+
+volumes:
+  pgdata:

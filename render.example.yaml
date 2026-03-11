@@ -1,0 +1,122 @@
+# Generic Render Blueprint example for Restailor.
+# Replace placeholder values with your own repo, domains, and secret-management setup.
+
+databases:
+  - name: restailor-db
+    databaseName: restailor
+    plan: basic-256mb
+    region: oregon
+
+services:
+  - type: keyvalue
+    name: restailor-redis
+    plan: starter
+    region: oregon
+    maxmemoryPolicy: allkeys-lru
+
+  - type: web
+    name: restailor-api
+    runtime: python
+    plan: starter
+    region: oregon
+    repo: https://github.com/your-org/restailor
+    branch: main
+    domains:
+      - api.example.com
+    buildCommand: |
+      pip install poetry && poetry install --only main
+    startCommand: |
+      poetry run alembic upgrade head
+      poetry run uvicorn main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /healthz
+    autoDeployTrigger: commit
+    envVars:
+      - key: WEBAUTHN_RP_ID
+        value: example.com
+      - key: WEBAUTHN_RP_NAME
+        value: Restailor
+      - key: WEBAUTHN_ORIGIN
+        value: https://app.example.com
+      - key: BACKEND_BASE_URL
+        value: https://api.example.com
+      - key: ALLOWED_ORIGINS
+        value: https://app.example.com,https://www.app.example.com
+      - key: COOKIE_DOMAIN
+        value: .example.com
+      - key: FORCE_HTTPS_HEADERS
+        value: "1"
+      - key: FRONTEND_URL
+        value: https://app.example.com
+      - key: FRONTEND_REDIRECT_URL
+        value: https://app.example.com
+      - key: MAIL_SERVER
+        value: smtp.example.com
+      - key: MAIL_PORT
+        value: "587"
+      - key: MAIL_FROM
+        value: noreply@example.com
+      - key: MAIL_FROM_NAME
+        value: Restailor
+      - key: MAIL_STARTTLS
+        value: "1"
+      - key: MAIL_SSL_TLS
+        value: "0"
+      - key: MAIL_USE_CREDENTIALS
+        value: "1"
+      - key: STRICT_SECRETS
+        value: "1"
+
+  - type: worker
+    name: restailor-worker
+    runtime: python
+    plan: starter
+    region: oregon
+    repo: https://github.com/your-org/restailor
+    branch: main
+    buildCommand: |
+      pip install poetry && poetry install --only main
+    startCommand: poetry run arq worker.WorkerSettings
+    autoDeployTrigger: commit
+    envVars:
+      - key: STRICT_SECRETS
+        value: "1"
+      - key: ARQ_MAX_JOBS
+        value: "6"
+
+  - type: web
+    name: restailor-frontend
+    runtime: node
+    plan: starter
+    region: oregon
+    repo: https://github.com/your-org/restailor
+    branch: main
+    rootDir: frontend
+    domains:
+      - app.example.com
+      - www.app.example.com
+    buildCommand: |
+      npm ci --include=dev
+      npm run build
+    startCommand: npm start
+    autoDeployTrigger: commit
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: INTERNAL_API_BASE_URL
+        value: https://api.example.com
+      - key: NEXT_PUBLIC_API_URL
+        value: https://api.example.com
+      - key: NEXT_PUBLIC_API_BASE_URL
+        value: https://api.example.com
+      - key: NEXT_PUBLIC_SITE_URL
+        value: https://app.example.com
+      - key: NEXT_PUBLIC_SUPPORT_EMAIL
+        value: support@example.com
+      - key: NEXT_PUBLIC_GTAG_ID
+        value: ""
+      - key: NEXT_PUBLIC_FEATURE_ANALYTICS
+        value: "0"
+      - key: NEXT_TELEMETRY_DISABLED
+        value: "1"
+      - key: NEXT_PUBLIC_TURNSTILE_SITE_KEY
+        value: replace-with-your-public-turnstile-key
