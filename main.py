@@ -10188,6 +10188,17 @@ def _effective_signup_grant_settings(app_state) -> SignupGrantSettings:
                         eff[k] = v
         except Exception as ex:
             logger.debug("signup_grant: merge in-memory overrides failed: %s", ex)
+
+    # Always normalize trial model IDs to current allowlist IDs to avoid stale
+    # admin/runtime settings surfacing deprecated model IDs in UI and enforcement.
+    try:
+        tms = eff.get("trial_models")
+        if isinstance(tms, list):
+            from restailor.settings_schemas import apply_model_upgrades
+            eff["trial_models"] = [apply_model_upgrades(str(m)) for m in tms if str(m).strip()]
+    except Exception as ex:
+        logger.debug("signup_grant: normalize trial_models failed: %s", ex)
+
     return SignupGrantSettings(**eff)
 
 
