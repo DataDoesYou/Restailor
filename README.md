@@ -2,6 +2,8 @@
 
 Restailor is an open-source resume tailoring platform with a FastAPI backend, a Next.js frontend, PostgreSQL for persistence, Redis-backed background jobs, and optional LLM provider integrations.
 
+If you want to use Restailor without setting up the OSS stack yourself, use the hosted app at [restailor.com](https://restailor.com).
+
 The repository is structured for self-hosting and local development. Secrets are expected to come from your local environment or a secret manager such as Doppler, but the repo includes a single root `.env.example` that documents the variables needed to run the stack.
 
 ## Features
