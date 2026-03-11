@@ -169,6 +169,18 @@ services:
       api:
         condition: service_healthy
 
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run --url http://api:8000
+    environment:
+      TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN:?CLOUDFLARE_TUNNEL_TOKEN is required}
+    depends_on:
+      api:
+        condition: service_healthy
+    networks:
+      - default
+
 volumes:
   pgdata:
     name: resume-tailor_pgdata

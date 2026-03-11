@@ -85,6 +85,19 @@ docker compose -f docker/docker-compose.dev.yml up --build
 
 This starts Postgres, Redis, the API, the worker, and the frontend using the root `.env` file.
 
+### Stripe Webhooks in Docker Dev
+
+This dev stack uses `cloudflared` to expose the local API (`http://api:8000`) through your Cloudflare tunnel.
+Point your Stripe webhook endpoint to that tunnel URL and keep `STRIPE_WEBHOOK_SECRET` in env/Doppler aligned with the Stripe endpoint secret.
+
+To verify tunnel logs:
+
+```bash
+docker compose -f docker/docker-compose.dev.yml logs -f cloudflared
+```
+
+Without webhook forwarding, Checkout can succeed but credits will not be applied.
+
 Doppler is optional. If you use Doppler, you can run the same command with injected secrets:
 
 ```bash

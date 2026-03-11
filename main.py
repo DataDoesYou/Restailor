@@ -7262,7 +7262,8 @@ async def stripe_webhook(request: Request):
       - If mapping fails, 202 Accepted with no-op.
     """
     stripe_cfg = CONFIG.get("stripe", {}) if isinstance(CONFIG.get("stripe", {}), dict) else {}
-    secret = (stripe_cfg.get("webhook_secret") or "").strip()
+    secret = (os.getenv("STRIPE_WEBHOOK_SECRET") or stripe_cfg.get("webhook_secret") or "").strip()
+
     enabled = bool(stripe_cfg.get("enabled", False))
     if not enabled or not secret:
         return Response(
