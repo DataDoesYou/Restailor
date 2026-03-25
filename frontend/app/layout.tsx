@@ -46,20 +46,11 @@ export const metadata: Metadata = {
 		siteName,
 		title: "Restailor - Tailor Your Resume to Any Job with AI",
 		description: "Instantly customize your resume for every job application using advanced AI. Match job descriptions perfectly, highlight relevant skills, and land more interviews.",
-		images: [
-			{
-				url: siteIconUrl,
-				width: 180,
-				height: 180,
-				alt: "Restailor - AI Resume Tailoring Tool",
-			},
-		],
 	},
 	twitter: {
 		card: "summary_large_image",
 		title: "Restailor - Tailor Your Resume to Any Job with AI",
 		description: "Instantly customize your resume for every job application. Match job descriptions perfectly and land more interviews.",
-		images: [siteIconUrl],
 	},
 	icons: {
 		icon: [
