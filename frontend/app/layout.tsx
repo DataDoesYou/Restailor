@@ -22,8 +22,8 @@ export const metadata: Metadata = {
 		default: "Restailor - Tailor Your Resume to Any Job with AI",
 		template: "%s | Restailor",
 	},
-	description: "Instantly customize your resume for every job application using advanced AI. Match job descriptions perfectly, highlight relevant skills, and land more interviews. Free trial available.",
-	keywords: ["resume builder", "AI resume", "resume tailoring", "job application", "resume optimization", "ATS resume", "career tools", "job search", "resume customization"],
+	description: "Built an AI platform that tailors resumes using multi-LLM (OpenAI, Anthropic, Gemini), analyzes candidate fit, and tracks job applications with integrated analytics.",
+	keywords: ["resume builder", "AI resume", "resume tailoring", "job application tracking", "resume optimization", "AI job search", "career tools"],
 	authors: [{ name: "Restailor" }],
 	creator: "Restailor",
 	publisher: "Restailor",
@@ -45,21 +45,21 @@ export const metadata: Metadata = {
 		url: siteUrl,
 		siteName,
 		title: "Restailor - Tailor Your Resume to Any Job with AI",
-		description: "Instantly customize your resume for every job application using advanced AI. Match job descriptions perfectly, highlight relevant skills, and land more interviews.",
+		description: "Built an AI platform that tailors resumes using multi-LLM, analyzes candidate fit, and tracks job applications with integrated analytics.",
 		images: [
 			{
-				url: siteIconUrl,
-				width: 180,
-				height: 180,
-				alt: "Restailor - AI Resume Tailoring Tool",
+				url: new URL("/og-image.png", siteUrl).toString(),
+				width: 1200,
+				height: 630,
+				alt: "Restailor - AI Resume Tailoring & Job Application Platform",
 			},
 		],
 	},
 	twitter: {
 		card: "summary_large_image",
 		title: "Restailor - Tailor Your Resume to Any Job with AI",
-		description: "Instantly customize your resume for every job application. Match job descriptions perfectly and land more interviews.",
-		images: [siteIconUrl],
+		description: "Built an AI platform that tailors resumes using multi-LLM, analyzes candidate fit, and tracks job applications with integrated analytics.",
+		images: [new URL("/og-image.png", siteUrl).toString()],
 	},
 	icons: {
 		icon: [
@@ -122,7 +122,7 @@ export default async function RootLayout({
 							"@type": "WebApplication",
 							"name": siteName,
 							"url": siteUrl,
-							"description": "Instantly customize your resume for every job application using advanced AI. Match job descriptions perfectly, highlight relevant skills, and land more interviews.",
+							"description": "Built an AI platform that tailors resumes using multi-LLM (OpenAI, Anthropic, Gemini), analyzes candidate fit, and tracks job applications with integrated analytics.",
 							"applicationCategory": "BusinessApplication",
 							"offers": {
 								"@type": "Offer",
@@ -134,7 +134,7 @@ export default async function RootLayout({
 								"Job description matching",
 								"ATS optimization",
 								"Multiple AI models",
-								"Application tracking"
+								"Application tracking logic and funnel"
 							]
 						})
 					}}
