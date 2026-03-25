@@ -19,7 +19,7 @@ const metadataBase = new URL(siteUrl);
 
 export const metadata: Metadata = {
 	title: {
-		default: "Restailor - Tailor Your Resume to Any Job with AI",
+		default: "Restailor | Tailor Your Resume to Any Job with AI",
 		template: "%s | Restailor",
 	},
 	description: "Built an AI platform that tailors resumes using multi-LLM (OpenAI, Anthropic, Gemini), analyzes candidate fit, and tracks job applications with integrated analytics.",
@@ -44,20 +44,20 @@ export const metadata: Metadata = {
 		locale: "en_US",
 		url: siteUrl,
 		siteName,
-		title: "Restailor - Tailor Your Resume to Any Job with AI",
+		title: "Restailor | Tailor Your Resume to Any Job with AI",
 		description: "Built an AI platform that tailors resumes using multi-LLM, analyzes candidate fit, and tracks job applications with integrated analytics.",
 		images: [
 			{
 				url: new URL("/og-image.png", siteUrl).toString(),
 				width: 1200,
 				height: 630,
-				alt: "Restailor - AI Resume Tailoring & Job Application Platform",
+				alt: "Restailor | AI Resume Tailoring & Job Application Platform",
 			},
 		],
 	},
 	twitter: {
 		card: "summary_large_image",
-		title: "Restailor - Tailor Your Resume to Any Job with AI",
+		title: "Restailor | Tailor Your Resume to Any Job with AI",
 		description: "Built an AI platform that tailors resumes using multi-LLM, analyzes candidate fit, and tracks job applications with integrated analytics.",
 		images: [new URL("/og-image.png", siteUrl).toString()],
 	},
