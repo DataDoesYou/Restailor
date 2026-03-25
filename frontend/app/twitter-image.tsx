@@ -1,0 +1,1 @@
+export { default, contentType, size, alt, runtime } from './opengraph-image';
