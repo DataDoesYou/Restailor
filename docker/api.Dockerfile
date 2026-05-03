@@ -3,15 +3,18 @@ FROM python:3.11-slim AS base
 
 ENV PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1 \
-    PYTHONDONTWRITEBYTECODE=1
+    PYTHONDONTWRITEBYTECODE=1 \
+    DOPPLER_CONFIG_DIR=/tmp/.doppler
 
 WORKDIR /app
 
 # System deps commonly needed (build tools, psycopg2, etc.)
 RUN apt-get update \
  && apt-get install -y --no-install-recommends build-essential curl git \
-    libpq-dev \
+    gnupg gpgv libpq-dev \
  && rm -rf /var/lib/apt/lists/*
+
+RUN curl -Ls --tlsv1.2 --proto "=https" --retry 3 https://cli.doppler.com/install.sh | sh
 
 # If pyproject.toml exists, install Poetry and project deps; else use requirements.txt
 COPY pyproject.toml poetry.lock* ./
@@ -28,7 +31,7 @@ RUN if [ ! -f "pyproject.toml" ] && [ -f "requirements.txt" ]; then \
     fi
 
 
-EXPOSE 8000
+EXPOSE 8080
 
 # No CMD here; compose will provide the command (e.g., uvicorn with --reload)
 
@@ -37,4 +40,4 @@ FROM base AS prod
 WORKDIR /app
 COPY . /app
 # Default runtime command; can be overridden in compose
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["sh", "-c", "doppler run -p ${DOPPLER_PROJECT:-restailor} -c ${DOPPLER_CONFIG:-prd} -- uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000}"]

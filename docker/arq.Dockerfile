@@ -3,15 +3,18 @@ FROM python:3.11-slim AS base
 
 ENV PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1 \
-    PYTHONDONTWRITEBYTECODE=1
+    PYTHONDONTWRITEBYTECODE=1 \
+    DOPPLER_CONFIG_DIR=/tmp/.doppler
 
 WORKDIR /app
 
 # System deps for building wheels and postgres driver
 RUN apt-get update \
  && apt-get install -y --no-install-recommends build-essential curl git \
-    libpq-dev \
+    gnupg gpgv libpq-dev \
  && rm -rf /var/lib/apt/lists/*
+
+RUN curl -Ls --tlsv1.2 --proto "=https" --retry 3 https://cli.doppler.com/install.sh | sh
 
 # Prefer Poetry if pyproject exists, else requirements.txt
 COPY pyproject.toml poetry.lock* ./
@@ -34,4 +37,4 @@ RUN if [ ! -f "pyproject.toml" ] && [ -f "requirements.txt" ]; then \
 FROM base AS prod
 WORKDIR /app
 COPY . /app
-CMD ["arq", "worker.WorkerSettings"]
+CMD ["sh", "-c", "doppler run -p ${DOPPLER_PROJECT:-restailor} -c ${DOPPLER_CONFIG:-prd} -- arq worker.WorkerSettings"]
