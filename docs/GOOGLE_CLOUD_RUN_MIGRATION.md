@@ -136,8 +136,10 @@ If you later choose a Cloud Run worker pool instead, set it to the smallest fixe
 - Check API health: `https://API_RUN_URL/health`.
 - Check frontend SSR pages load and API proxy calls reach the API.
 - Run a small authenticated tailor and judge flow so Redis queueing, SSE, worker processing, billing, and database writes are all exercised.
-- Map `api.restailor.com` to `restailor-api`.
-- Map `restailor.com` and `www.restailor.com` to `restailor-frontend`.
+- In regions where Cloud Run domain mappings are unavailable, put a global external HTTPS load balancer in front of the services with serverless NEGs:
+  - `api.restailor.com` routes to `restailor-api`.
+  - `restailor.com` and `www.restailor.com` route to `restailor-frontend`.
+  - DNS points all three names at the load balancer IP with DNS-only records while the Google-managed certificate provisions.
 - Keep Render live until Cloud Run has processed real traffic and logs look clean.
 - Disable Render auto-deploy first, then decommission the old services after the rollback window.
 
