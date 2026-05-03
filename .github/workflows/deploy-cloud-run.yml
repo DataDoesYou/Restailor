@@ -144,6 +144,7 @@ jobs:
           gcloud run deploy restailor-frontend \
             --image "${FRONTEND_IMAGE}" \
             --allow-unauthenticated \
+            --service-account "${SERVICE_ACCOUNT}" \
             --port 8080 \
             --env-vars-file deploy/cloudrun/frontend.env.yaml \
             --memory 512Mi \
