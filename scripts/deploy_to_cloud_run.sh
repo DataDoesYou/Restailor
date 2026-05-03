@@ -105,10 +105,9 @@ gcloud run deploy "$API_SERVICE" \
   --cpu 1 \
   --concurrency 40 \
   --timeout 900 \
-  --min-instances 1 \
+  --min-instances 0 \
   --max-instances 10 \
-  --set-env-vars "CLOUD_RUN_WORKER_JOB=${WORKER_JOB},CLOUD_RUN_WORKER_REGION=${REGION},CLOUD_RUN_WORKER_PROJECT=${PROJECT_ID}" \
-  --startup-probe "httpGet.path=/healthz,initialDelaySeconds=5,timeoutSeconds=3,periodSeconds=10,failureThreshold=12" \
+  --startup-probe "httpGet.path=/health,initialDelaySeconds=5,timeoutSeconds=3,periodSeconds=10,failureThreshold=12" \
   "${service_common_flags[@]}" \
   "${secret_flags[@]}"
 

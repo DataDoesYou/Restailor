@@ -38,7 +38,7 @@ gcloud artifacts repositories create "$REPOSITORY" \
 
 ## Database And Redis
 
-Create Cloud SQL for PostgreSQL 16+ and enable `pgcrypto` in the `restailor` database before running migrations.
+Create Cloud SQL for PostgreSQL 18 to match the current Render Postgres major version, and enable `pgcrypto` in the `restailor` database before running migrations. Do not import the Render Postgres 18 dump into an older Cloud SQL major version.
 
 For Redis, create Memorystore in the same region. Cloud Run needs private network access to reach Memorystore. Prefer Direct VPC egress with `NETWORK` and `SUBNET` because it works for services and jobs. A Serverless VPC Access connector can still be used through `VPC_CONNECTOR`.
 
@@ -133,7 +133,7 @@ If you later choose a Cloud Run worker pool instead, set it to the smallest fixe
 
 - Deploy Cloud Run services without changing DNS.
 - Confirm the migration job exits successfully.
-- Check API health: `https://API_RUN_URL/healthz`.
+- Check API health: `https://API_RUN_URL/health`.
 - Check frontend SSR pages load and API proxy calls reach the API.
 - Run a small authenticated tailor and judge flow so Redis queueing, SSE, worker processing, billing, and database writes are all exercised.
 - Map `api.restailor.com` to `restailor-api`.
