@@ -1,0 +1,64 @@
+substitutions:
+  _REGION: us-east5
+  _REPOSITORY: restailor
+  _TAG: manual
+  _NEXT_PUBLIC_API_BASE_URL: https://api.restailor.com
+  _NEXT_PUBLIC_API_URL: https://api.restailor.com
+  _NEXT_PUBLIC_SITE_URL: https://restailor.com
+  _NEXT_PUBLIC_FEATURE_ANALYTICS: "1"
+  _NEXT_PUBLIC_TURNSTILE_SITE_KEY: ""
+  _NEXT_PUBLIC_SUPPORT_EMAIL: support@restailor.com
+  _NEXT_PUBLIC_GTAG_ID: ""
+
+steps:
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - -f
+      - docker/api.Dockerfile
+      - --target
+      - prod
+      - -t
+      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/api:${_TAG}
+      - .
+
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - -f
+      - docker/arq.Dockerfile
+      - --target
+      - prod
+      - -t
+      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/worker:${_TAG}
+      - .
+
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - -f
+      - docker/next.Dockerfile
+      - --target
+      - prod
+      - --build-arg
+      - NEXT_PUBLIC_API_BASE_URL=${_NEXT_PUBLIC_API_BASE_URL}
+      - --build-arg
+      - NEXT_PUBLIC_API_URL=${_NEXT_PUBLIC_API_URL}
+      - --build-arg
+      - NEXT_PUBLIC_SITE_URL=${_NEXT_PUBLIC_SITE_URL}
+      - --build-arg
+      - NEXT_PUBLIC_FEATURE_ANALYTICS=${_NEXT_PUBLIC_FEATURE_ANALYTICS}
+      - --build-arg
+      - NEXT_PUBLIC_TURNSTILE_SITE_KEY=${_NEXT_PUBLIC_TURNSTILE_SITE_KEY}
+      - --build-arg
+      - NEXT_PUBLIC_SUPPORT_EMAIL=${_NEXT_PUBLIC_SUPPORT_EMAIL}
+      - --build-arg
+      - NEXT_PUBLIC_GTAG_ID=${_NEXT_PUBLIC_GTAG_ID}
+      - -t
+      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/frontend:${_TAG}
+      - frontend
+
+images:
+  - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/api:${_TAG}
+  - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/worker:${_TAG}
+  - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/frontend:${_TAG}
