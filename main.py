@@ -6,6 +6,7 @@ from typing import Annotated, Optional
 from typing import List, Literal
 from uuid import UUID
 import logging
+import httpx
 
 from fastapi import FastAPI, Depends, Request, HTTPException, Header, Response, APIRouter, Body, Form
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -158,6 +159,73 @@ def _redis_settings_from_config() -> RedisSettings:
         database = 0
     password = os.getenv("REDIS_PASSWORD") or rconf.get("password") or None
     return RedisSettings(host=host, port=port, database=database, password=password)
+
+
+async def _metadata_text(path: str) -> str | None:
+    url = f"http://metadata.google.internal/computeMetadata/v1/{path.lstrip('/')}"
+    try:
+        async with httpx.AsyncClient(timeout=2.0) as client:
+            resp = await client.get(url, headers={"Metadata-Flavor": "Google"})
+        if resp.status_code == 200:
+            return resp.text.strip()
+    except Exception as ex:
+        logger.debug("cloud_run_worker: metadata lookup %s failed: %s", path, ex)
+    return None
+
+
+async def _metadata_json(path: str) -> dict[str, Any] | None:
+    text = await _metadata_text(path)
+    if not text:
+        return None
+    try:
+        value = json.loads(text)
+    except Exception as ex:
+        logger.debug("cloud_run_worker: metadata json %s parse failed: %s", path, ex)
+        return None
+    return value if isinstance(value, dict) else None
+
+
+async def _trigger_cloud_run_worker_job() -> None:
+    job_name = (os.getenv("CLOUD_RUN_WORKER_JOB") or "").strip()
+    if not job_name:
+        return
+
+    project = (os.getenv("CLOUD_RUN_WORKER_PROJECT") or os.getenv("GOOGLE_CLOUD_PROJECT") or "").strip()
+    if not project:
+        project = (await _metadata_text("project/project-id")) or ""
+
+    region = (os.getenv("CLOUD_RUN_WORKER_REGION") or os.getenv("GOOGLE_CLOUD_REGION") or "").strip()
+    if not region:
+        raw_region = await _metadata_text("instance/region")
+        region = (raw_region or "").rsplit("/", 1)[-1]
+
+    token_payload = await _metadata_json("instance/service-accounts/default/token")
+    access_token = str((token_payload or {}).get("access_token") or "")
+    if not project or not region or not access_token:
+        logger.debug(
+            "cloud_run_worker: skipped trigger project=%s region=%s token=%s",
+            bool(project),
+            bool(region),
+            bool(access_token),
+        )
+        return
+
+    url = f"https://run.googleapis.com/v2/projects/{project}/locations/{region}/jobs/{job_name}:run"
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            resp = await client.post(url, headers={"Authorization": f"Bearer {access_token}"}, json={})
+        if resp.status_code >= 300:
+            logger.warning(
+                "cloud_run_worker: trigger failed status=%s body=%s",
+                resp.status_code,
+                resp.text[:500],
+            )
+        else:
+            logger.debug("cloud_run_worker: triggered job=%s region=%s", job_name, region)
+    except Exception as ex:
+        logger.warning("cloud_run_worker: trigger request failed: %s", ex)
+
+
 def _get_keyring_secret(name: str) -> str | None:
     try:
         import keyring  # type: ignore
@@ -2327,6 +2395,7 @@ async def delete_my_data(
             return EnqueueAck(job_id=secrets.token_hex(16))
     try:
         jid = await pool.enqueue_job("delete_all_user_data", int(getattr(current_user, "id", 0)))
+        asyncio.create_task(_trigger_cloud_run_worker_job())
         return EnqueueAck(job_id=str(jid))
     except Exception:
         # Best-effort fallback if enqueue fails
@@ -2378,6 +2447,7 @@ async def delete_my_account(
             return EnqueueAck(job_id=secrets.token_hex(16))
     try:
         jid = await pool.enqueue_job("delete_account", int(getattr(current_user, "id", 0)))
+        asyncio.create_task(_trigger_cloud_run_worker_job())
         return EnqueueAck(job_id=str(jid))
     except Exception:
         # Best-effort fallback if enqueue fails
@@ -7811,6 +7881,7 @@ async def create_job(
         try:
             if hasattr(_redis, "enqueue_job"):
                 await _redis.enqueue_job(name, *args)  # type: ignore[attr-defined]
+                asyncio.create_task(_trigger_cloud_run_worker_job())
                 return True
         except Exception as ex:
             logger.debug("jobs.create: enqueue %s failed: %s", name, ex)
@@ -8282,6 +8353,7 @@ async def start_benchmark_ranking(
             body.judge_provider,
             body.judge_model_id,
         )
+        asyncio.create_task(_trigger_cloud_run_worker_job())
     else:
         # Enqueue with an empty candidates payload so arguments logged by ARQ do not contain PII
         await redis.enqueue_job(
@@ -8291,6 +8363,7 @@ async def start_benchmark_ranking(
             body.judge_provider,
             body.judge_model_id,
         )
+        asyncio.create_task(_trigger_cloud_run_worker_job())
     # Associate this ranking job to a run if provided by the caller
     try:
         run_id = request.headers.get("X-Run-Id")
@@ -8649,6 +8722,7 @@ async def create_fit_job(
                 req.provider,
                 req.model_id,
             )
+            asyncio.create_task(_trigger_cloud_run_worker_job())
             enq_ok = True
     except Exception:
         enq_ok = False
@@ -8945,6 +9019,7 @@ async def create_judge_only_job(
                 req.judge_provider,
                 req.judge_model_id,
             )
+            asyncio.create_task(_trigger_cloud_run_worker_job())
             enq_ok = True
     except Exception:
         enq_ok = False
@@ -9463,6 +9538,7 @@ async def _enqueue_analytics_snapshot_refresh(request: Request, user_id: int | N
     try:
         if hasattr(redis, "enqueue_job"):
             await redis.enqueue_job("rebuild_user_analytics", int(user_id))  # type: ignore[arg-type]
+            asyncio.create_task(_trigger_cloud_run_worker_job())
     except Exception as ex:
         logger.debug("analytics.refresh: enqueue failed: %s", ex)
 
@@ -11160,4 +11236,3 @@ async def api_pretend_stream(role: str = "tailor", force_prestream_stall: int | 
     if force_prestream_stall:
         raise HTTPException(status_code=504, detail="pre-stream stall simulated")
     raise HTTPException(status_code=404, detail="not implemented")
-

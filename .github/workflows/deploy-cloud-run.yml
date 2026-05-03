@@ -1,0 +1,157 @@
+name: Deploy Cloud Run
+
+on:
+  push:
+    branches:
+      - dev
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  PROJECT_ID: vtx-macro-gt
+  PROJECT_NUMBER: "475871150437"
+  REGION: us-east5
+  REPOSITORY: restailor
+  SERVICE_ACCOUNT: restailor-run@vtx-macro-gt.iam.gserviceaccount.com
+  DEPLOY_SERVICE_ACCOUNT: restailor-github-deploy@vtx-macro-gt.iam.gserviceaccount.com
+  WORKLOAD_IDENTITY_PROVIDER: projects/475871150437/locations/global/workloadIdentityPools/github-actions/providers/github
+  CLOUD_SQL_INSTANCE: vtx-macro-gt:us-east5:restailor-postgres
+  DOPPLER_SECRETS: DOPPLER_TOKEN=restailor-doppler-token:latest
+  NEXT_PUBLIC_API_BASE_URL: https://api.restailor.com
+  NEXT_PUBLIC_API_URL: https://api.restailor.com
+  NEXT_PUBLIC_SITE_URL: https://restailor.com
+  NEXT_PUBLIC_FEATURE_ANALYTICS: "1"
+  NEXT_PUBLIC_TURNSTILE_SITE_KEY: 0x4AAAAAACADoTLZH7pI8MiR
+  NEXT_PUBLIC_SUPPORT_EMAIL: support@restailor.com
+  NEXT_PUBLIC_GTAG_ID: ""
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ env.WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ env.DEPLOY_SERVICE_ACCOUNT }}
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker "${REGION}-docker.pkg.dev" --quiet
+
+      - name: Build and push images
+        run: |
+          set -euo pipefail
+          TAG="${GITHUB_SHA::7}"
+          IMAGE_BASE="${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY}"
+
+          docker build \
+            --file docker/api.Dockerfile \
+            --target prod \
+            --tag "${IMAGE_BASE}/api:${TAG}" \
+            .
+          docker push "${IMAGE_BASE}/api:${TAG}"
+
+          docker build \
+            --file docker/arq.Dockerfile \
+            --target prod \
+            --tag "${IMAGE_BASE}/worker:${TAG}" \
+            .
+          docker push "${IMAGE_BASE}/worker:${TAG}"
+
+          docker build \
+            --file docker/next.Dockerfile \
+            --target prod \
+            --build-arg "NEXT_PUBLIC_API_BASE_URL=${NEXT_PUBLIC_API_BASE_URL}" \
+            --build-arg "NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}" \
+            --build-arg "NEXT_PUBLIC_SITE_URL=${NEXT_PUBLIC_SITE_URL}" \
+            --build-arg "NEXT_PUBLIC_FEATURE_ANALYTICS=${NEXT_PUBLIC_FEATURE_ANALYTICS}" \
+            --build-arg "NEXT_PUBLIC_TURNSTILE_SITE_KEY=${NEXT_PUBLIC_TURNSTILE_SITE_KEY}" \
+            --build-arg "NEXT_PUBLIC_SUPPORT_EMAIL=${NEXT_PUBLIC_SUPPORT_EMAIL}" \
+            --build-arg "NEXT_PUBLIC_GTAG_ID=${NEXT_PUBLIC_GTAG_ID}" \
+            --tag "${IMAGE_BASE}/frontend:${TAG}" \
+            frontend
+          docker push "${IMAGE_BASE}/frontend:${TAG}"
+
+      - name: Deploy Cloud Run
+        run: |
+          set -euo pipefail
+          TAG="${GITHUB_SHA::7}"
+          IMAGE_BASE="${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY}"
+          API_IMAGE="${IMAGE_BASE}/api:${TAG}"
+          WORKER_IMAGE="${IMAGE_BASE}/worker:${TAG}"
+          FRONTEND_IMAGE="${IMAGE_BASE}/frontend:${TAG}"
+
+          COMMON_FLAGS=(
+            --project "${PROJECT_ID}"
+            --region "${REGION}"
+            --service-account "${SERVICE_ACCOUNT}"
+            --network default
+            --subnet default
+            --vpc-egress private-ranges-only
+            --set-cloudsql-instances "${CLOUD_SQL_INSTANCE}"
+            --set-secrets "${DOPPLER_SECRETS}"
+          )
+
+          gcloud run jobs deploy restailor-migrate \
+            --image "${API_IMAGE}" \
+            --command bash \
+            --args "-lc,doppler run -p restailor -c prd -- alembic upgrade head" \
+            --env-vars-file deploy/cloudrun/api.env.yaml \
+            --memory 1Gi \
+            --cpu 1 \
+            --task-timeout 900 \
+            "${COMMON_FLAGS[@]}"
+          gcloud run jobs execute restailor-migrate \
+            --project "${PROJECT_ID}" \
+            --region "${REGION}" \
+            --wait
+
+          gcloud run deploy restailor-api \
+            --image "${API_IMAGE}" \
+            --allow-unauthenticated \
+            --port 8080 \
+            --env-vars-file deploy/cloudrun/api.env.yaml \
+            --memory 1Gi \
+            --cpu 1 \
+            --concurrency 40 \
+            --timeout 900 \
+            --min-instances 0 \
+            --max-instances 10 \
+            --startup-probe "httpGet.path=/health,initialDelaySeconds=5,timeoutSeconds=3,periodSeconds=10,failureThreshold=12" \
+            "${COMMON_FLAGS[@]}"
+
+          gcloud run jobs deploy restailor-worker \
+            --image "${WORKER_IMAGE}" \
+            --command bash \
+            --args "-lc,doppler run -p restailor -c prd -- arq --burst worker.WorkerSettings" \
+            --env-vars-file deploy/cloudrun/worker.env.yaml \
+            --memory 1Gi \
+            --cpu 1 \
+            --task-timeout 3600 \
+            "${COMMON_FLAGS[@]}"
+
+          gcloud run deploy restailor-frontend \
+            --image "${FRONTEND_IMAGE}" \
+            --allow-unauthenticated \
+            --service-account "${SERVICE_ACCOUNT}" \
+            --port 8080 \
+            --env-vars-file deploy/cloudrun/frontend.env.yaml \
+            --memory 512Mi \
+            --cpu 1 \
+            --concurrency 80 \
+            --timeout 300 \
+            --min-instances 0 \
+            --max-instances 10 \
+            --project "${PROJECT_ID}" \
+            --region "${REGION}"
