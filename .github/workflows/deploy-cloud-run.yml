@@ -3,7 +3,7 @@ name: Deploy Cloud Run
 on:
   push:
     branches:
-      - dev
+      - main
   workflow_dispatch:
 
 permissions:
