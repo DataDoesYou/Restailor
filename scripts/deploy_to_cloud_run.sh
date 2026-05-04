@@ -22,6 +22,7 @@ CLOUD_SQL_INSTANCE="${CLOUD_SQL_INSTANCE:-}"
 DOPPLER_SECRETS="${DOPPLER_SECRETS:-}"
 DOPPLER_PROJECT="${DOPPLER_PROJECT:-restailor}"
 DOPPLER_CONFIG="${DOPPLER_CONFIG:-prd}"
+CLOUD_RUN_INGRESS="${CLOUD_RUN_INGRESS:-internal-and-cloud-load-balancing}"
 
 NEXT_PUBLIC_API_BASE_URL="${NEXT_PUBLIC_API_BASE_URL:-https://api.restailor.com}"
 NEXT_PUBLIC_API_URL="${NEXT_PUBLIC_API_URL:-$NEXT_PUBLIC_API_BASE_URL}"
@@ -105,6 +106,7 @@ gcloud run deploy "$API_SERVICE" \
   --cpu 1 \
   --concurrency 40 \
   --timeout 900 \
+  --ingress "$CLOUD_RUN_INGRESS" \
   --min-instances 0 \
   --max-instances 10 \
   --startup-probe "httpGet.path=/health,initialDelaySeconds=5,timeoutSeconds=3,periodSeconds=10,failureThreshold=12" \
@@ -137,6 +139,7 @@ gcloud run deploy "$FRONTEND_SERVICE" \
   --cpu 1 \
   --concurrency 80 \
   --timeout 300 \
+  --ingress "$CLOUD_RUN_INGRESS" \
   --min-instances 0 \
   --max-instances 10 \
   "${service_common_flags[@]}"

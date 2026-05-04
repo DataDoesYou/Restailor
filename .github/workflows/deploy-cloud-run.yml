@@ -3,7 +3,7 @@ name: Deploy Cloud Run
 on:
   push:
     branches:
-      - dev
+      - main
   workflow_dispatch:
 
 permissions:
@@ -27,6 +27,7 @@ env:
   NEXT_PUBLIC_TURNSTILE_SITE_KEY: 0x4AAAAAACADoTLZH7pI8MiR
   NEXT_PUBLIC_SUPPORT_EMAIL: support@restailor.com
   NEXT_PUBLIC_GTAG_ID: ""
+  CLOUD_RUN_INGRESS: internal-and-cloud-load-balancing
 
 jobs:
   deploy:
@@ -126,6 +127,7 @@ jobs:
             --cpu 1 \
             --concurrency 40 \
             --timeout 900 \
+            --ingress "${CLOUD_RUN_INGRESS}" \
             --min-instances 0 \
             --max-instances 10 \
             --startup-probe "httpGet.path=/health,initialDelaySeconds=5,timeoutSeconds=3,periodSeconds=10,failureThreshold=12" \
@@ -151,6 +153,7 @@ jobs:
             --cpu 1 \
             --concurrency 80 \
             --timeout 300 \
+            --ingress "${CLOUD_RUN_INGRESS}" \
             --min-instances 0 \
             --max-instances 10 \
             --project "${PROJECT_ID}" \

@@ -129,17 +129,31 @@ Do the first deployment manually from this script before connecting GitHub autom
 
 If you later choose a Cloud Run worker pool instead, set it to the smallest fixed instance count you can tolerate. A worker pool is a continuous polling process and is billed while instances are running, even when the Redis queue is empty.
 
+## Edge Protection
+
+The API and frontend deploy with `--min-instances 0` and `--ingress internal-and-cloud-load-balancing` by default. Public traffic should enter through the global HTTPS load balancer, not the direct `*.run.app` service URLs. This keeps direct Cloud Run scanner traffic from waking idle service instances. For a first bootstrap before the load balancer exists, temporarily run the deploy with `CLOUD_RUN_INGRESS=all`, then switch back before DNS cutover.
+
+After the load balancer backend services exist, attach the Cloud Armor policy:
+
+```bash
+export PROJECT_ID=your-gcp-project
+./scripts/configure_cloudrun_edge_protection.sh
+```
+
+The policy blocks obvious low-value scanner user agents and common exploit scan paths before they reach Cloud Run. Keep the rule list conservative; use load balancer logs to add only noisy patterns that are clearly not real users.
+
 ## Cutover Checklist
 
 - Deploy Cloud Run services without changing DNS.
 - Confirm the migration job exits successfully.
-- Check API health: `https://API_RUN_URL/health`.
-- Check frontend SSR pages load and API proxy calls reach the API.
+- Check API health through the load balancer: `https://api.restailor.com/health`.
+- Check frontend SSR pages load through the load balancer and API proxy calls reach the API.
 - Run a small authenticated tailor and judge flow so Redis queueing, SSE, worker processing, billing, and database writes are all exercised.
 - In regions where Cloud Run domain mappings are unavailable, put a global external HTTPS load balancer in front of the services with serverless NEGs:
   - `api.restailor.com` routes to `restailor-api`.
   - `restailor.com` and `www.restailor.com` route to `restailor-frontend`.
   - DNS points all three names at the load balancer IP with DNS-only records while the Google-managed certificate provisions.
+- Attach Cloud Armor with `./scripts/configure_cloudrun_edge_protection.sh`.
 - Keep Render live until Cloud Run has processed real traffic and logs look clean.
 - Disable Render auto-deploy first, then decommission the old services after the rollback window.
 
