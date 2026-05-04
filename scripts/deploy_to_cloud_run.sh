@@ -108,7 +108,7 @@ gcloud run deploy "$API_SERVICE" \
   --timeout 900 \
   --ingress "$CLOUD_RUN_INGRESS" \
   --min-instances 0 \
-  --max-instances 10 \
+  --max-instances 1 \
   --startup-probe "httpGet.path=/health,initialDelaySeconds=5,timeoutSeconds=3,periodSeconds=10,failureThreshold=12" \
   "${service_common_flags[@]}" \
   "${secret_flags[@]}"
@@ -141,7 +141,7 @@ gcloud run deploy "$FRONTEND_SERVICE" \
   --timeout 300 \
   --ingress "$CLOUD_RUN_INGRESS" \
   --min-instances 0 \
-  --max-instances 10 \
+  --max-instances 1 \
   "${service_common_flags[@]}"
 
 echo "Done."
