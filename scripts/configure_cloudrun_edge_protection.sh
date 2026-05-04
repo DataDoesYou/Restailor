@@ -6,7 +6,38 @@ set -euo pipefail
 POLICY_NAME="${POLICY_NAME:-restailor-edge-policy}"
 FRONTEND_BACKEND="${FRONTEND_BACKEND:-restailor-frontend-backend}"
 API_BACKEND="${API_BACKEND:-restailor-api-backend}"
+ALLOWED_HOSTS="${ALLOWED_HOSTS:-restailor.com,www.restailor.com,api.restailor.com}"
 
+build_allowed_hosts_regex() {
+  local csv="$1"
+  local regex=""
+  local host
+  local escaped_host
+
+  IFS=',' read -ra hosts <<< "$csv"
+  for host in "${hosts[@]}"; do
+    host="${host#"${host%%[![:space:]]*}"}"
+    host="${host%"${host##*[![:space:]]}"}"
+    if [[ -z "$host" ]]; then
+      continue
+    fi
+    escaped_host="${host//./[.]}"
+    if [[ -n "$regex" ]]; then
+      regex+="|"
+    fi
+    regex+="^${escaped_host}$"
+  done
+
+  if [[ -z "$regex" ]]; then
+    echo "Set ALLOWED_HOSTS to at least one hostname." >&2
+    exit 1
+  fi
+
+  printf '%s' "$regex"
+}
+
+ALLOWED_HOSTS_REGEX="$(build_allowed_hosts_regex "$ALLOWED_HOSTS")"
+ALLOWED_HOSTS_EXPRESSION="has(request.headers[\"host\"]) && !request.headers[\"host\"].lower().matches(\"${ALLOWED_HOSTS_REGEX}\")"
 SCANNER_UA_EXPRESSION='has(request.headers["user-agent"]) && (request.headers["user-agent"].contains("CensysInspect") || request.headers["user-agent"].contains("MJ12bot") || request.headers["user-agent"].contains("visionheight.com/scan"))'
 SCANNER_PATH_EXPRESSION='request.path.matches("(?i).*/[.]git/.*") || request.path.matches("(?i).*/wp-admin/.*") || request.path.matches("(?i).*/wp-login[.]php.*") || request.path.matches("(?i).*/js/config[.]js.*")'
 
@@ -15,6 +46,24 @@ if ! gcloud compute security-policies describe "$POLICY_NAME" \
   gcloud compute security-policies create "$POLICY_NAME" \
     --project "$PROJECT_ID" \
     --description "Block low-value scanner traffic before Cloud Run"
+fi
+
+if ! gcloud compute security-policies rules describe 900 \
+  --project "$PROJECT_ID" \
+  --security-policy "$POLICY_NAME" >/dev/null 2>&1; then
+  gcloud compute security-policies rules create 900 \
+    --project "$PROJECT_ID" \
+    --security-policy "$POLICY_NAME" \
+    --action deny-403 \
+    --expression "$ALLOWED_HOSTS_EXPRESSION" \
+    --description "Block requests for unrecognized hostnames"
+else
+  gcloud compute security-policies rules update 900 \
+    --project "$PROJECT_ID" \
+    --security-policy "$POLICY_NAME" \
+    --action deny-403 \
+    --expression "$ALLOWED_HOSTS_EXPRESSION" \
+    --description "Block requests for unrecognized hostnames"
 fi
 
 if ! gcloud compute security-policies rules describe 1000 \

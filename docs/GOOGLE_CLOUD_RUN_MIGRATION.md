@@ -131,16 +131,17 @@ If you later choose a Cloud Run worker pool instead, set it to the smallest fixe
 
 ## Edge Protection
 
-The API and frontend deploy with `--min-instances 0` and `--ingress internal-and-cloud-load-balancing` by default. Public traffic should enter through the global HTTPS load balancer, not the direct `*.run.app` service URLs. This keeps direct Cloud Run scanner traffic from waking idle service instances. For a first bootstrap before the load balancer exists, temporarily run the deploy with `CLOUD_RUN_INGRESS=all`, then switch back before DNS cutover.
+The API and frontend deploy with `--min-instances 0`, `--max-instances 1`, and `--ingress internal-and-cloud-load-balancing` by default. This is a demo-oriented cost cap: the services can scale to zero when idle, and each service can run at most one instance when traffic arrives. Public traffic should enter through the global HTTPS load balancer, not the direct `*.run.app` service URLs. This keeps direct Cloud Run scanner traffic from waking idle service instances. For a first bootstrap before the load balancer exists, temporarily run the deploy with `CLOUD_RUN_INGRESS=all`, then switch back before DNS cutover.
 
 After the load balancer backend services exist, attach the Cloud Armor policy:
 
 ```bash
 export PROJECT_ID=your-gcp-project
+export ALLOWED_HOSTS=restailor.com,www.restailor.com,api.restailor.com
 ./scripts/configure_cloudrun_edge_protection.sh
 ```
 
-The policy blocks obvious low-value scanner user agents and common exploit scan paths before they reach Cloud Run. Keep the rule list conservative; use load balancer logs to add only noisy patterns that are clearly not real users.
+The policy blocks requests for unrecognized hostnames, obvious low-value scanner user agents, and common exploit scan paths before they reach Cloud Run. The hostname rule rejects direct load balancer IP traffic while allowing the comma-separated `ALLOWED_HOSTS` values. Keep the scanner rule list conservative; use load balancer logs to add only noisy patterns that are clearly not real users.
 
 ## Cutover Checklist
 
