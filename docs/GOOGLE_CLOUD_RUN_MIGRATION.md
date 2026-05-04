@@ -137,10 +137,11 @@ After the load balancer backend services exist, attach the Cloud Armor policy:
 
 ```bash
 export PROJECT_ID=your-gcp-project
+export ALLOWED_HOSTS=restailor.com,www.restailor.com,api.restailor.com
 ./scripts/configure_cloudrun_edge_protection.sh
 ```
 
-The policy blocks requests for unrecognized hostnames, obvious low-value scanner user agents, and common exploit scan paths before they reach Cloud Run. The hostname rule rejects direct load balancer IP traffic while allowing `restailor.com`, `www.restailor.com`, and `api.restailor.com`. Keep the scanner rule list conservative; use load balancer logs to add only noisy patterns that are clearly not real users.
+The policy blocks requests for unrecognized hostnames, obvious low-value scanner user agents, and common exploit scan paths before they reach Cloud Run. The hostname rule rejects direct load balancer IP traffic while allowing the comma-separated `ALLOWED_HOSTS` values. Keep the scanner rule list conservative; use load balancer logs to add only noisy patterns that are clearly not real users.
 
 ## Cutover Checklist
 
