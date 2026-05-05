@@ -131,7 +131,7 @@ If you later choose a Cloud Run worker pool instead, set it to the smallest fixe
 
 ## Edge Protection
 
-The API and frontend deploy with `--min-instances 0`, `--max-instances 1`, and `--ingress internal-and-cloud-load-balancing` by default. This is a demo-oriented cost cap: the services can scale to zero when idle, and each service can run at most one instance when traffic arrives. Public traffic should enter through the global HTTPS load balancer, not the direct `*.run.app` service URLs. This keeps direct Cloud Run scanner traffic from waking idle service instances. For a first bootstrap before the load balancer exists, temporarily run the deploy with `CLOUD_RUN_INGRESS=all`, then switch back before DNS cutover.
+The API and frontend deploy with service-level `--min 0`, service-level `--max 1`, revision-level `--min-instances 0`, revision-level `--max-instances 1`, and `--ingress internal-and-cloud-load-balancing` by default. This is a demo-oriented cost cap: the services can scale to zero when idle, and each service can run at most one instance when traffic arrives. Public traffic should enter through the global HTTPS load balancer, not the direct `*.run.app` service URLs. This keeps direct Cloud Run scanner traffic from waking idle service instances. For a first bootstrap before the load balancer exists, temporarily run the deploy with `CLOUD_RUN_INGRESS=all`, then switch back before DNS cutover.
 
 After the load balancer backend services exist, attach the Cloud Armor policy:
 
