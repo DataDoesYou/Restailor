@@ -129,7 +129,7 @@ jobs:
             --timeout 900 \
             --ingress "${CLOUD_RUN_INGRESS}" \
             --min-instances 0 \
-            --max-instances 10 \
+            --max-instances 1 \
             --startup-probe "httpGet.path=/health,initialDelaySeconds=5,timeoutSeconds=3,periodSeconds=10,failureThreshold=12" \
             "${COMMON_FLAGS[@]}"
 
@@ -155,6 +155,6 @@ jobs:
             --timeout 300 \
             --ingress "${CLOUD_RUN_INGRESS}" \
             --min-instances 0 \
-            --max-instances 10 \
+            --max-instances 1 \
             --project "${PROJECT_ID}" \
             --region "${REGION}"
