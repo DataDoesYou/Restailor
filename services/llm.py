@@ -202,6 +202,8 @@ async def stream_model(
     - Stops on first stop marker occurrence.
     """
     prov = (provider or "").strip().lower()
+    if prov == "google":
+        prov = "gemini"
     cfg = load_config() or {}
 
     # Mock mode short-circuit: simulate streaming without calling providers
@@ -257,7 +259,7 @@ async def stream_model(
             import logging as _log
             _log.getLogger(__name__).debug("stream_model: cancel flag set failed: %s", ex)
 
-    if prov in ("openai", "anthropic", "gemini", "xai") and not api_key:
+    if prov in ("openai", "anthropic", "gemini", "xai") and not str(api_key or "").strip():
         raise RuntimeError("missing_byok_key")
 
     async def _maybe_close(obj: Any) -> None:

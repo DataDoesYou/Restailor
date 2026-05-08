@@ -1,11 +1,13 @@
 import uuid
 
+import pytest
 from fastapi.testclient import TestClient
 
 from main import app
 from restailor.db import SessionLocal
 from restailor.models import CreditLedger, User, UserProviderKey
 from .utils import signup_and_mark_test, login
+from services.llm import stream_model
 
 
 def _auth_client():
@@ -53,3 +55,22 @@ def test_provider_key_metadata_never_returns_raw_key():
         row = s.query(UserProviderKey).filter(UserProviderKey.user_id == user.id, UserProviderKey.provider == "openai").one()
         assert row.key_tail == "sk...56"
         assert b"sk-test" not in bytes(row.key_enc)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("provider,env_name", [("openai", "OPENAI_API_KEY"), ("google", "GOOGLE_API_KEY")])
+async def test_platform_env_key_is_never_implicit_byok(monkeypatch, provider: str, env_name: str):
+    monkeypatch.setenv(env_name, f"platform-secret-{uuid.uuid4().hex}")
+    with pytest.raises(RuntimeError, match="missing_byok_key"):
+        async for _chunk in stream_model(
+            provider=provider,
+            model="provider-test-model",
+            system_prompt="",
+            user_prompt="hello",
+            params={},
+            timeouts={"first_byte_ms": 1000, "stream_stall_abort_ms": 1000},
+            stop_markers=[],
+            job_id="test-google-provider-alias",
+            api_key=None,
+        ):
+            pass
