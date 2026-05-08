@@ -8,7 +8,7 @@ export default function TeamClient() {
         <h1 className="text-3xl font-bold mb-6">Meet our team</h1>
         <div className="text-slate-300 space-y-4 max-w-2xl leading-relaxed">
           <p>
-            Restailor is a free, open-source AI tool for resume analysis, resume tailoring, and job application workflows. It is hosted for job seekers to use with their own provider keys.
+            Restailor is a free, open-source workspace for resume analysis, resume tailoring, and job application workflows. It is hosted for job seekers to use with their own provider keys.
           </p>
           <p>
             The project is founder-led and independently operated, with a direct focus on practical utility, responsible data handling, and keeping the hosted experience available as a community-friendly tool.

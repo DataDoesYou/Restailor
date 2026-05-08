@@ -23,7 +23,7 @@ export const metadata: Metadata = {
 		default: "Restailor - Free Open-Source AI Resume Tailoring",
 		template: "%s | Restailor",
 	},
-	description: "Restailor is a free, open-source resume tailoring and application tracking tool. Bring your own AI provider key, keep a local usage budget, and tailor resumes without paying Restailor.",
+	description: "Restailor is a free, open-source workspace for tailoring resumes and tracking job applications. Use your own AI provider key for model-powered fit analysis and resume help.",
 	keywords: ["free resume builder", "open source resume tailoring", "BYOK AI resume", "bring your own key", "AI resume", "resume tailoring", "job application tracker", "ATS resume", "career tools", "job search"],
 	authors: [{ name: "Restailor" }],
 	creator: "Restailor",
@@ -46,12 +46,12 @@ export const metadata: Metadata = {
 		url: siteUrl,
 		siteName,
 		title: "Restailor - Free Open-Source AI Resume Tailoring",
-		description: "Tailor resumes and track applications with a free, open-source BYOK tool. Restailor does not sell credits or add provider markup.",
+		description: "Tailor resumes, compare fit, and track job applications in an open-source workspace powered by your own AI provider key.",
 	},
 	twitter: {
 		card: "summary_large_image",
 		title: "Restailor - Free Open-Source AI Resume Tailoring",
-		description: "A free hosted resume tailoring tool for people who bring their own AI provider key.",
+		description: "A free, open-source workspace for resume tailoring, fit analysis, and job application tracking.",
 	},
 	icons: {
 		icon: [

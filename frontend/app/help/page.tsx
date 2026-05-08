@@ -3,7 +3,7 @@ import { Metadata } from "next";
 
 export const metadata: Metadata = {
 	title: "Help for Free BYOK Resume Tailoring",
-	description: "Learn how Restailor works as a free, open-source BYOK resume tailoring tool with provider-key setup, budget tracking, privacy controls, and application history.",
+	description: "Learn how to tailor resumes, compare fit, manage your provider key, track Budget usage, and keep application history in Restailor.",
 };
 
 export default async function Page() {

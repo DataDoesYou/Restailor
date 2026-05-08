@@ -3,7 +3,7 @@ import { Metadata } from "next";
 
 export const metadata: Metadata = {
 	title: "Team | Restailor",
-	description: "Meet the founder behind Restailor, a free, open-source hosted resume tailoring and application tracking tool.",
+	description: "Meet the founder behind Restailor, an open-source workspace for resume tailoring, fit analysis, and application tracking.",
 };
 
 export default function Page() {
