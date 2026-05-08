@@ -5,7 +5,7 @@ import { getClientId, b64urlToBuf, bufToB64url } from "@/lib/client";
 import { setEphemeralAccessToken, setAccessToken, clearAccessToken, clearEphemeralAccessToken } from "@/lib/auth";
 import { useRouter, useSearchParams } from "next/navigation";
 import { logger } from "@/lib/logger";
-import TurnstileWidget from "@/components/captcha/TurnstileWidget";
+import dynamic from "next/dynamic";
 
 // Minimal outline icons (monochrome) for Show/Hide password
 function EyeIcon({ className = "" }: { className?: string }) {
@@ -25,6 +25,8 @@ function EyeOffIcon({ className = "" }: { className?: string }) {
 		</svg>
 	);
 }
+
+const TurnstileWidget = dynamic(() => import("@/components/captcha/TurnstileWidget"), { ssr: false });
 
 // Module-level variable to track Turnstile state across all component instances
 let globalTsState: "idle" | "success" | "error" = "idle";
