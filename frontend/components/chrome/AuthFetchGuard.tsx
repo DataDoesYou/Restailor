@@ -37,7 +37,7 @@ const PROTECTED_PREFIXES = [
   "/jobs/",
   "/applications/",
   "/admin",
-  "/billing",
+  "/budget",
   "/pricing/averages",
 ];
 

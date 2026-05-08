@@ -31,17 +31,11 @@ export const SidebarModels: React.FC<Props> = ({
   const [tailorModels, setTailorModels] = useState<string[]>([]);
   const [judgeModels, setJudgeModels] = useState<string[]>([]);
   
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(isAuthenticated !== false);
   const [updatedAt, setUpdatedAt] = useState<string | null>(null);
-  const [mounted, setMounted] = useState(false);
   
   // Save queue to prevent concurrent modifications (409 conflicts)
   const saveQueueRef = useRef<Promise<any>>(Promise.resolve());
-  
-  // Prevent hydration errors by only rendering after client-side mount
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   // Helper to check if a model is available (not restricted by trial)
   const isModelAvailable = (modelId: string): boolean => {
@@ -66,6 +60,7 @@ export const SidebarModels: React.FC<Props> = ({
   useEffect(() => {
     // If parent hasn't determined auth yet, wait
     if (isAuthenticated === undefined) {
+      setLoading(true);
       return;
     }
     
@@ -639,13 +634,15 @@ export const SidebarModels: React.FC<Props> = ({
     });
   };
 
-  // Show loading state during initial load and prevent hydration errors
-  if (!mounted || loading) {
-    if (isRtDebug()) console.log('[SidebarModels] Rendering loading state:', { mounted, loading, fitModelId });
+  // Authenticated users wait for persisted DB settings. Logged-out users render the
+  // deterministic default controls immediately so SSR and hydration do not swap a
+  // one-line loading placeholder for the full model UI on page load.
+  if (loading) {
+    if (isRtDebug()) console.log('[SidebarModels] Rendering loading state:', { loading, fitModelId });
     return <div className="text-slate-400" suppressHydrationWarning>Loading...</div>;
   }
   
-  if (isRtDebug()) console.log('[SidebarModels] Rendering full UI:', { mounted, loading, fitModelId, multiModelEnabled });
+  if (isRtDebug()) console.log('[SidebarModels] Rendering full UI:', { loading, fitModelId, multiModelEnabled });
 
   return (
     <div className="space-y-5" suppressHydrationWarning>
@@ -864,4 +861,3 @@ export const SidebarModels: React.FC<Props> = ({
 };
 
 export default SidebarModels;
-

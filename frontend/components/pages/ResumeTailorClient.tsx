@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, useCallback, useLayoutEffect } from "react";
+import type { Dispatch, SetStateAction } from "react";
 import { flushSync } from "react-dom";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { isRtDebug, log, getNavId } from "@/lib/rtDebug";
-import RtDebugHud from "@/components/debug/RtDebugHud";
 import api, { ApiError, getApiBaseUrl } from "@/lib/api";
 // Batch (multi-model) hook & banner (FIT phase wiring only per prompt)
 import useBatchPhase from "@/hooks/useBatchPhase";
@@ -26,14 +26,143 @@ import { effectiveSelected } from "@/lib/modelSelectionAdapter";
 
 
 type Alert = { kind: "info" | "success" | "warning" | "error"; text: string } | null;
+type ResumeRunDebugEvent = { iso: string; relMs: number; name: string; data?: Record<string, unknown> };
 
 type Props = { initialLoggedIn?: boolean; initialAuthVerified?: boolean; initialApplied?: boolean; initialJudgeLabel?: string; initialResultType?: string; initialStatsMd?: string; initialFitOutput?: string; initialTailoredOutput?: string; initialJudgeOutput?: string; initialSnapshotLoaded?: boolean; initialResumeText?: string; initialJdText?: string; initialAppliedBanner?: string; initialTrialUsd?: string; initialFreeReqHint?: number; __seedDebug?: any };
+
+function clipDebugData(data: Record<string, unknown> | undefined): Record<string, unknown> | undefined {
+	if (!data) return undefined;
+	try {
+		return JSON.parse(JSON.stringify(data, (_key, value) => {
+			if (typeof value === "string" && value.length > 220) return `${value.slice(0, 220)}...`;
+			return value;
+		}));
+	} catch {
+		return { unserializable: true };
+	}
+}
+
+function ResumeRunDebugOverlay({
+	events,
+	setEvents,
+}: {
+	events: ResumeRunDebugEvent[];
+	setEvents: Dispatch<SetStateAction<ResumeRunDebugEvent[]>>;
+}) {
+	const [minimized, setMinimized] = useState(true);
+	const copyText = useMemo(() => {
+		return events.map((event) => {
+			const payload = event.data ? ` ${JSON.stringify(event.data)}` : "";
+			return `${event.iso} +${event.relMs}ms ${event.name}${payload}`;
+		}).join("\n");
+	}, [events]);
+
+	return (
+		<div
+			style={{
+				position: "fixed",
+				right: 12,
+				bottom: 12,
+				zIndex: 100000,
+				width: minimized ? 230 : "min(760px, calc(100vw - 24px))",
+				maxHeight: minimized ? 44 : "min(540px, calc(100vh - 24px))",
+				overflow: "hidden",
+				border: "1px solid rgba(148, 163, 184, 0.45)",
+				borderRadius: 8,
+				background: "rgba(2, 6, 23, 0.94)",
+				boxShadow: "0 18px 60px rgba(0,0,0,0.4)",
+				color: "#dbeafe",
+				fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
+				fontSize: 11,
+			}}
+		>
+			<div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", borderBottom: minimized ? 0 : "1px solid rgba(148, 163, 184, 0.25)" }}>
+				<strong style={{ color: "#93c5fd", marginRight: "auto" }}>Resume Run Debug</strong>
+				<button type="button" onClick={() => navigator.clipboard?.writeText(copyText).catch(() => {})} style={{ color: "#bfdbfe", background: "rgba(30, 41, 59, 0.9)", border: "1px solid rgba(148, 163, 184, 0.4)", borderRadius: 6, padding: "3px 8px" }}>copy</button>
+				<button type="button" onClick={() => setEvents([])} style={{ color: "#bfdbfe", background: "transparent", border: "1px solid rgba(148, 163, 184, 0.35)", borderRadius: 6, padding: "3px 8px" }}>clear</button>
+				<button type="button" onClick={() => setMinimized((value) => !value)} style={{ color: "#bfdbfe", background: "transparent", border: "1px solid rgba(148, 163, 184, 0.35)", borderRadius: 6, padding: "3px 8px" }}>{minimized ? "maximize" : "minimize"}</button>
+			</div>
+			{!minimized ? (
+				<div style={{ maxHeight: 490, overflow: "auto", padding: 10 }}>
+					{events.length === 0 ? (
+						<div style={{ color: "#94a3b8" }}>Waiting for submit events...</div>
+					) : events.map((event, index) => (
+						<div key={`${event.iso}-${index}`} style={{ whiteSpace: "pre-wrap", wordBreak: "break-word", paddingBottom: 4 }}>
+							<span style={{ color: "#38bdf8" }}>{event.iso}</span>{" "}
+							<span style={{ color: "#fbbf24" }}>+{event.relMs}ms</span>{" "}
+							<span style={{ color: "#86efac" }}>{event.name}</span>
+							{event.data ? <span style={{ color: "#cbd5e1" }}> {JSON.stringify(event.data)}</span> : null}
+						</div>
+					))}
+				</div>
+			) : null}
+		</div>
+	);
+}
+
+function submission402Message(err?: ApiError): string {
+	const detail = typeof err?.detail === "string" ? err.detail : String((err?.detail as any)?.detail || "");
+	if (detail === "missing_byok_key") {
+		return "Missing provider API key. Add your BYOK key in Settings before running a model.";
+	}
+	return "Insufficient Budget credits. Add Budget credits before running a model.";
+}
+
+async function getLocalByokKey(provider: string): Promise<string | null> {
+	if (typeof window === "undefined") return null;
+	const stored = localStorage.getItem(`rt_byok_local_${provider}`);
+	if (!stored) return null;
+	const payload = JSON.parse(stored);
+	const cryptoKey = await new Promise<CryptoKey | null>((resolve) => {
+		const open = indexedDB.open("restailor-byok", 1);
+		open.onerror = () => resolve(null);
+		open.onsuccess = () => {
+			const tx = open.result.transaction("keys", "readonly");
+			const req = tx.objectStore("keys").get(provider);
+			req.onsuccess = () => resolve((req.result as CryptoKey) || null);
+			req.onerror = () => resolve(null);
+		};
+	});
+	if (!cryptoKey) return null;
+	const plain = await crypto.subtle.decrypt(
+		{ name: "AES-GCM", iv: new Uint8Array(payload.iv || []) },
+		cryptoKey,
+		new Uint8Array(payload.cipher || []),
+	);
+	return new TextDecoder().decode(plain);
+}
 
 export default function ResumeTailorClient({ initialLoggedIn, initialAuthVerified, initialApplied, initialJudgeLabel, initialResultType, initialStatsMd, initialFitOutput, initialTailoredOutput, initialJudgeOutput, initialSnapshotLoaded, initialResumeText, initialJdText, initialAppliedBanner, initialTrialUsd, initialFreeReqHint, __seedDebug }: Props) {
 	if (isRtDebug()) console.log('[ResumeTailorClient] Component mounting/rendering');
 	const router = useRouter();
 	const pathname = usePathname();
 	const searchParams = useSearchParams();
+	const [rtDebugEnabled, setRtDebugEnabled] = useState(false);
+	const debugStartedAtRef = useRef(0);
+	const [runDebugEvents, setRunDebugEvents] = useState<ResumeRunDebugEvent[]>([]);
+	const addRunDebugEvent = useCallback((name: string, data?: Record<string, unknown>) => {
+		if (!isRtDebug()) return;
+		const now = typeof performance !== "undefined" ? performance.now() : Date.now();
+		const startedAt = debugStartedAtRef.current || now;
+		debugStartedAtRef.current = startedAt;
+		setRunDebugEvents((prev) => [...prev.slice(-249), {
+			iso: new Date().toISOString(),
+			relMs: Math.round(now - startedAt),
+			name,
+			data: clipDebugData(data),
+		}]);
+	}, []);
+
+	useEffect(() => {
+		setRtDebugEnabled(isRtDebug());
+		addRunDebugEvent("overlay.mounted", {
+			pathname: window.location.pathname,
+			search: window.location.search,
+			apiBaseUrl: getApiBaseUrl(),
+			initialLoggedIn,
+			initialAuthVerified,
+		});
+	}, [addRunDebugEvent, initialAuthVerified, initialLoggedIn]);
 	
 	// 🔍 PAGE RELOAD DETECTION - Track double-loading issues
 	const [reloadDiagnostic, setReloadDiagnostic] = useState<{
@@ -917,12 +1046,17 @@ export default function ResumeTailorClient({ initialLoggedIn, initialAuthVerifie
 	// Alias code mapping (shared with BenchmarkClient) for anonymized comparative judging
 	const CODE_MAP: Record<string,string> = useMemo(()=>({
 		"Claude Sonnet 4.6": "CS4.6",
+		"Claude Opus 4.7": "CO4.7",
 		"Claude Opus 4.6": "CO4.6",
 		"Gemini 2.5 Flash": "G2.5F",
+		"Gemini 3 Flash": "G3F",
 		"Gemini 3.1 Pro": "G3.1P",
 		"GPT-4.1": "G4.1",
 		"GPT-5": "G5",
+		"GPT-5.5 Instant": "G5.5I",
+		"GPT-5.5": "G5.5",
 		"Grok 4.1 Fast Reasoning": "Gr4.1FR",
+		"Grok 4.3": "Gr4.3",
 		"Grok 4": "Gr4",
 	}), []);
 	const aliasCode = useCallback((alias: string) => CODE_MAP[alias] || ("C" + Math.abs(alias.split('').reduce((a,c)=>a+c.charCodeAt(0),0)) % 10000), [CODE_MAP]);
@@ -1987,8 +2121,11 @@ export default function ResumeTailorClient({ initialLoggedIn, initialAuthVerifie
 		console.log('[Tooltip Debug] Pricing fetch effect triggered, isLoggedIn:', isLoggedIn, 'authPending:', authPending);
 		if (authPending) return; // wait for auth to actually be confirmed by API
 		if (isLoggedIn == null) return; // wait until auth probe finishes
-		if (isLoggedIn === false) { // logged out: clear any stale private stats
-			if (statsMd) { setStatsMd(""); }
+		if (isLoggedIn === false) {
+			// Logged-out demo snapshots are public SSR data; keep their timing stats
+			// so the result panel does not flicker after hydration.
+			const hasPublicSnapshotStats = initialSnapshotLoaded && typeof initialStatsMd === "string" && initialStatsMd.trim().length > 0;
+			if (statsMd && !hasPublicSnapshotStats) { setStatsMd(""); }
 			return; // skip fetching while logged out (requires auth)
 		}
 		let disposed = false;
@@ -1996,16 +2133,22 @@ export default function ResumeTailorClient({ initialLoggedIn, initialAuthVerifie
 		console.log('[Tooltip Debug] Starting pricing data fetch...');
 		(async () => {
 			try {
-				const sum = await api.get<{ averages_by_model?: Array<{ request_type?: string; model?: string; avg_price_usd?: string | number; n?: number }> }>("/billing/summary", { query: { model_count: 1 }, signal: controller.signal });
-				console.log('[Tooltip Debug] /billing/summary response:', sum);
+				let sum = await api.get<{ averages_by_model?: Array<{ request_type?: string; model?: string; avg_price_usd?: string | number; n?: number }> }>("/budget/summary", { query: { output_models: 1 }, signal: controller.signal }).catch((err: any) => {
+					if (err?.status === 404) return null;
+					throw err;
+				});
+				if (!sum) {
+					sum = await api.get<{ averages_by_model?: Array<{ request_type?: string; model?: string; avg_price_usd?: string | number; n?: number }> }>("/billing/summary", { query: { output_models: 1 }, signal: controller.signal });
+				}
+				console.log('[Tooltip Debug] /budget/summary response:', sum);
 				if (!disposed) setAvgRowsGlobal(Array.isArray(sum?.averages_by_model) ? sum!.averages_by_model! : []);
 			} catch (err: any) {
-				if (err.name !== 'AbortError') {
-					console.error('[Tooltip Debug] /billing/summary error:', err);
+				if (err.name !== 'AbortError' && err?.status !== 404) {
+					console.error('[Tooltip Debug] /budget/summary error:', err);
 				}
 			}
 			try {
-				const rows = await api.get<Array<{ request_type?: string; model?: string; avg_price_usd?: string | number; n?: number }>>("/pricing/averages", { query: { scope: "user", model_count: 1 }, signal: controller.signal });
+				const rows = await api.get<Array<{ request_type?: string; model?: string; avg_price_usd?: string | number; n?: number }>>("/pricing/averages", { query: { scope: "user", output_models: 1 }, signal: controller.signal });
 				console.log('[Tooltip Debug] /pricing/averages response:', rows);
 				if (!disposed) setAvgRowsUser(rows);
 			} catch (err: any) {
@@ -2015,7 +2158,7 @@ export default function ResumeTailorClient({ initialLoggedIn, initialAuthVerifie
 			}
 		})();
 		return () => { disposed = true; controller.abort(); };
-	}, [isLoggedIn, authPending, statsMd]);	// Recompute pricing tooltips synchronously from cached rows so they update immediately on UI changes
+	}, [isLoggedIn, authPending, statsMd, initialSnapshotLoaded, initialStatsMd]);	// Recompute pricing tooltips synchronously from cached rows so they update immediately on UI changes
 	useEffect(() => {
 		// NOTE: Legacy unified modelLabel is no longer authoritative for per-phase pricing.
 		// The previous implementation always used modelLabel for both fit & tailor tooltips,
@@ -2185,12 +2328,18 @@ export default function ResumeTailorClient({ initialLoggedIn, initialAuthVerifie
 	// Refresh cached averages so tooltips reflect latest charge immediately
 	const refreshAverages = useCallback(async () => {
 		try {
-			const sum = await api.get<{ averages_by_model?: Array<{ request_type?: string; model?: string; avg_price_usd?: string | number; n?: number }> }>("/billing/summary", { query: { model_count: 1 } });
+			let sum = await api.get<{ averages_by_model?: Array<{ request_type?: string; model?: string; avg_price_usd?: string | number; n?: number }> }>("/budget/summary", { query: { output_models: 1 } }).catch((err: any) => {
+				if (err?.status === 404) return null;
+				throw err;
+			});
+			if (!sum) {
+				sum = await api.get<{ averages_by_model?: Array<{ request_type?: string; model?: string; avg_price_usd?: string | number; n?: number }> }>("/billing/summary", { query: { output_models: 1 } });
+			}
 			setAvgRowsGlobal(Array.isArray(sum?.averages_by_model) ? sum!.averages_by_model! : []);
 		} catch {}
 		if (isLoggedIn === true) {
 			try {
-				const rows = await api.get<Array<{ request_type?: string; model?: string; avg_price_usd?: string | number; n?: number }>>("/pricing/averages", { query: { scope: "user", model_count: 1 } });
+				const rows = await api.get<Array<{ request_type?: string; model?: string; avg_price_usd?: string | number; n?: number }>>("/pricing/averages", { query: { scope: "user", output_models: 1 } });
 				setAvgRowsUser(rows);
 			} catch {}
 		}
@@ -2533,9 +2682,11 @@ export default function ResumeTailorClient({ initialLoggedIn, initialAuthVerifie
 	// and fall back gracefully if averages are missing.
 	const ensureBalance = useCallback(async (requestType: string, modelForPricing: string, providerModelId?: string) => {
 		try {
-			// Align with Billing: use /billing/summary (global list) to read averages
-			const sum = await api.get<{ averages_by_model?: Array<{ request_type?: string; model?: string; avg_price_usd?: string | number; n?: number }> }>("/billing/summary").catch(() => null as any);
+			addRunDebugEvent("balance.check.start", { requestType, modelForPricing, providerModelId });
+			// Align with Billing: use /budget/summary (global list) to read averages
+			const sum = await api.get<{ averages_by_model?: Array<{ request_type?: string; model?: string; avg_price_usd?: string | number; n?: number }> }>("/budget/summary").catch(() => null as any);
 			const rows = Array.isArray(sum?.averages_by_model) ? sum!.averages_by_model! : [];
+			addRunDebugEvent("balance.summary.loaded", { rows: rows.length, usedBudgetSummary: Boolean(sum) });
 			const cand = new Set([modelForPricing, providerModelId || ""]);
 			let need = 0;
 			for (const r of rows) {
@@ -2548,13 +2699,36 @@ export default function ResumeTailorClient({ initialLoggedIn, initialAuthVerifie
 			}
 			const cents = Math.round(need * 100);
 			const bal = await api.get<{ balance_cents: number }>("/users/me/balance");
+			addRunDebugEvent("balance.check.result", { needUsd: need, needCents: cents, balanceCents: Number(bal?.balance_cents || 0) });
 			if (cents > 0 && Number(bal?.balance_cents || 0) < cents) {
-				setAlert({ kind: "error", text: "Insufficient balance. Please add credits on Billing page." });
+				setAlert({ kind: "error", text: "Insufficient Budget credits. Add Budget credits before running a model." });
 				return false;
 			}
-		} catch {}
+		} catch (err) {
+			addRunDebugEvent("balance.check.error", { status: (err as ApiError)?.status, detail: (err as ApiError)?.detail || String(err) });
+		}
 		return true;
-	}, []);
+	}, [addRunDebugEvent]);
+
+	const runtimeSecretForProvider = useCallback(async (provider?: string | null) => {
+		if (!provider) return null;
+		try {
+			addRunDebugEvent("byok.local.lookup.start", { provider });
+			const localKey = await getLocalByokKey(provider);
+			addRunDebugEvent("byok.local.lookup.result", { provider, foundLocalKey: Boolean(localKey), keyLength: localKey ? localKey.length : 0 });
+			if (!localKey) return null;
+			const resp = await api.post<{ runtime_secret_id?: string }>("/byok/runtime-secrets", {
+				provider,
+				key: localKey,
+				intended_use: "model_run",
+			});
+			addRunDebugEvent("byok.runtime_secret.result", { provider, hasRuntimeSecretId: Boolean(resp.runtime_secret_id) });
+			return resp.runtime_secret_id || null;
+		} catch (err) {
+			addRunDebugEvent("byok.runtime_secret.error", { provider, status: (err as ApiError)?.status, detail: (err as ApiError)?.detail || String(err) });
+			return null;
+		}
+	}, [addRunDebugEvent]);
 
 	// Actions
 	// Track silent session expiry (background 401s) without forcing logout
@@ -2645,19 +2819,21 @@ export default function ResumeTailorClient({ initialLoggedIn, initialAuthVerifie
 				setBatchPhase('fit');
 				await fitBatchRef.current.startBatch('fit', models, async (alias: string) => {
 					const meta = MODEL_REGISTRY[alias];
-					if (!meta) {
-						const err = `Multi-model fit: MODEL_REGISTRY missing entry for alias "${alias}". Available keys: ${Object.keys(MODEL_REGISTRY).join(', ')}`;
-						console.error(err);
-						setAlert({ kind: "error", text: err });
-						throw new Error(err);
-					}
-					const r = await api.post<{ job_id: string; access_token: string }>("/fit", {
-						resume_text: resumeText,
-						jd_text: jdText,
-						provider: meta.provider,
-						model_id: meta.model,
-						source_page: "Resume Tailor Multi",
-					}, { headers: { "X-Client-Id": xClient, "Idempotency-Key": crypto.randomUUID() } });
+						if (!meta) {
+							const err = `Multi-model fit: MODEL_REGISTRY missing entry for alias "${alias}". Available keys: ${Object.keys(MODEL_REGISTRY).join(', ')}`;
+							console.error(err);
+							setAlert({ kind: "error", text: err });
+							throw new Error(err);
+						}
+						const runtimeSecretId = await runtimeSecretForProvider(meta.provider);
+						const r = await api.post<{ job_id: string; access_token: string }>("/fit", {
+							resume_text: resumeText,
+							jd_text: jdText,
+							provider: meta.provider,
+							model_id: meta.model,
+							runtime_secret_id: runtimeSecretId,
+							source_page: "Resume Tailor Multi",
+						}, { headers: { "X-Client-Id": xClient, "Idempotency-Key": crypto.randomUUID() } });
 					return { jobId: r.job_id };
 				});
 				setFitRequested(true); // treat as running for existing UI gating
@@ -2728,23 +2904,36 @@ export default function ResumeTailorClient({ initialLoggedIn, initialAuthVerifie
 			try {
 			// Compute explicit model lists for reproducibility
 			const modelLists = computeJobModelLists();
+			addRunDebugEvent("submit.fit.start", {
+				provider: fitModelMeta!.provider,
+				modelId: fitModelMeta!.model,
+				clientId: xClient,
+				resumeLen: resumeText.length,
+				jdLen: jdText.length,
+				fitModels: modelLists.fit_models,
+			});
+			const runtimeSecretId = await runtimeSecretForProvider(fitModelMeta!.provider);
+			addRunDebugEvent("submit.fit.byok_ready", { hasRuntimeSecretId: Boolean(runtimeSecretId), provider: fitModelMeta!.provider });
 			const r = await api.post<{ job_id: string; access_token: string }>("/fit", {
 				resume_text: resumeText,
 				jd_text: jdText,
 				provider: fitModelMeta!.provider,
 				model_id: fitModelMeta!.model,
+				runtime_secret_id: runtimeSecretId,
 				source_page: "Resume Tailor",
 				fit_models: modelLists.fit_models, // Explicit model list for reproducibility
 				}, { headers: { "X-Client-Id": xClient, "Idempotency-Key": crypto.randomUUID() } });
+			addRunDebugEvent("submit.fit.success", { jobId: r.job_id, hasAccessToken: Boolean(r.access_token) });
 			setJobId(r.job_id);
 			setJobToken(r.access_token);
 			setFitRequested(true); // Set after successful job submission
 			setOptimisticRunning(null); // Clear optimistic state once job is started
 		} catch (e) {
 			const err = e as ApiError;
+			addRunDebugEvent("submit.fit.error", { status: err.status, detail: err.detail || err.message || String(e) });
 			setOptimisticRunning(null); // Clear optimistic state on error
 			if (err.status === 401) { sessionExpiredRef.current = true; setAlert({ kind: "error", text: "Session expired. Log in again to continue." }); return; }
-			if (err.status === 402) setAlert({ kind: "error", text: "Insufficient balance. Please add credits on Billing page." });
+			if (err.status === 402) setAlert({ kind: "error", text: submission402Message(err) });
 			else {
 				const detail = err.detail || err.message || '';
 				const errorMsg = detail ? `Failed to submit fit: ${detail}` : "Failed to submit fit. Please try again or contact support if the issue persists.";
@@ -2753,7 +2942,7 @@ export default function ResumeTailorClient({ initialLoggedIn, initialAuthVerifie
 			// On error, clear the fitRequested flag since job didn't start
 			setFitRequested(false);
 		}
-	}, [fitRequested, jobId, jobToken, resumeText, jdText, fitModelMeta, xClient, validateInputs, ensureBalance, fitModelLabel]);
+	}, [fitRequested, jobId, jobToken, resumeText, jdText, fitModelMeta, xClient, validateInputs, ensureBalance, fitModelLabel, addRunDebugEvent, runtimeSecretForProvider]);
 
 	const onTailor = useCallback(async () => {
 		if (!tailorRequested && !awaitingJudge) autoSwitchLockedRef.current = false;
@@ -2840,17 +3029,19 @@ export default function ResumeTailorClient({ initialLoggedIn, initialAuthVerifie
 				setBatchPhase('tailor');
 				await fitBatchRef.current.startBatch('tailor', models, async (alias: string) => {
 					const meta = MODEL_REGISTRY[alias];
-					if (!meta) {
-						console.warn("tailor multi: missing MODEL_REGISTRY entry for alias", alias);
-						throw new Error("Unknown model alias: " + alias);
-					}
-					const r = await api.post<{ job_id: string; access_token: string }>("/jobs", {
-						resume_text: resumeText,
-						jd_text: jdText,
-						provider: meta.provider,
-						model_id: meta.model,
-						source_page: "Resume Tailor Multi",
-						total_models_selected: models.length,
+						if (!meta) {
+							console.warn("tailor multi: missing MODEL_REGISTRY entry for alias", alias);
+							throw new Error("Unknown model alias: " + alias);
+						}
+						const runtimeSecretId = await runtimeSecretForProvider(meta.provider);
+						const r = await api.post<{ job_id: string; access_token: string }>("/jobs", {
+							resume_text: resumeText,
+							jd_text: jdText,
+							provider: meta.provider,
+							model_id: meta.model,
+							runtime_secret_id: runtimeSecretId,
+							source_page: "Resume Tailor Multi",
+							total_models_selected: models.length,
 						request_group_id: requestGroupRef.current,
 					}, { headers: { "X-Client-Id": xClient, "Idempotency-Key": crypto.randomUUID() } });
 					return { jobId: r.job_id };
@@ -2893,31 +3084,43 @@ export default function ResumeTailorClient({ initialLoggedIn, initialAuthVerifie
 		singleRunMetaRef.current = { runId: globalRunCounterRef.current, intendedResultType: 'tailor', manualVersionAtStart: manualChangeVersionRef.current };
 			try {
 			// Try synchronous submit to surface 402 first
+			addRunDebugEvent("submit.tailor.start", {
+				provider: tailorModelMeta!.provider,
+				modelId: tailorModelMeta!.model,
+				clientId: xClient,
+				resumeLen: resumeText.length,
+				jdLen: jdText.length,
+			});
+			const runtimeSecretId = await runtimeSecretForProvider(tailorModelMeta!.provider);
+			addRunDebugEvent("submit.tailor.byok_ready", { hasRuntimeSecretId: Boolean(runtimeSecretId), provider: tailorModelMeta!.provider });
 			const r = await api.post<{ job_id: string; access_token: string }>("/jobs", {
 				resume_text: resumeText,
 				jd_text: jdText,
 				provider: tailorModelMeta!.provider,
 				model_id: tailorModelMeta!.model,
+				runtime_secret_id: runtimeSecretId,
 				source_page: "Resume Tailor",
 				total_models_selected: 1,
 				request_group_id: requestGroupRef.current,
 			}, { headers: { "X-Client-Id": xClient, "Idempotency-Key": crypto.randomUUID() } });
+			addRunDebugEvent("submit.tailor.success", { jobId: r.job_id, hasAccessToken: Boolean(r.access_token) });
 			setJobId(r.job_id);
 			setJobToken(r.access_token);
 				setTailorRequested(true);
 				setOptimisticRunning(null); // Clear optimistic state once job is started
 		} catch (e) {
 			const err = e as ApiError;
+			addRunDebugEvent("submit.tailor.error", { status: err.status, detail: err.detail || err.message || String(e) });
 			setOptimisticRunning(null); // Clear optimistic state on error
 			if (err.status === 401) { sessionExpiredRef.current = true; setAlert({ kind: "error", text: "Session expired. Log in again to continue." }); return; }
-			if (err.status === 402) setAlert({ kind: "error", text: "Insufficient balance. Please add credits on Billing page." });
+			if (err.status === 402) setAlert({ kind: "error", text: submission402Message(err) });
 			else {
 				const detail = err.detail || err.message || '';
 				const errorMsg = detail ? `Failed to submit tailor job: ${detail}` : "Failed to submit tailor job. Please try again or contact support if the issue persists.";
 				setAlert({ kind: "error", text: errorMsg });
 			}
 		}
-	}, [tailorRequested, awaitingJudge, jobId, jobToken, resumeText, jdText, tailorModelMeta, judgeMeta, xClient, validateInputs, ensureBalance, tailorModelLabel, batchPhase]);
+	}, [tailorRequested, awaitingJudge, jobId, jobToken, resumeText, jdText, tailorModelMeta, judgeMeta, xClient, validateInputs, ensureBalance, tailorModelLabel, batchPhase, addRunDebugEvent, runtimeSecretForProvider]);
 
 	const onJudge = useCallback(async () => {
 		if (!judgeRequested) autoSwitchLockedRef.current = false;
@@ -3033,16 +3236,18 @@ export default function ResumeTailorClient({ initialLoggedIn, initialAuthVerifie
 					if (uniqSet.size < 2) {
 						const singleText = (Object.values(nonEmptyBase)[0] as string | undefined) || (tailoredOutput || '').trim();
 						try { console.debug('[judge->multi-pivot-judge]', { judgeAliases, textLen: singleText.length }); } catch {}
-						await fitBatchRef.current.startBatch('judge', judgeAliases, async (alias: string) => {
-							const meta = MODEL_REGISTRY[alias];
-							if (!meta) { console.warn('judge multi: missing MODEL_REGISTRY entry', alias); throw new Error('Unknown judge alias: ' + alias); }
-							const r = await api.post<{ job_id: string; access_token: string }>("/judge", {
-								resume_text: resumeText,
-								jd_text: jdText,
-								candidate_text: singleText,
-								judge_provider: meta.provider,
-								judge_model_id: meta.model,
-								source_page: 'Resume Tailor Multi',
+							await fitBatchRef.current.startBatch('judge', judgeAliases, async (alias: string) => {
+								const meta = MODEL_REGISTRY[alias];
+								if (!meta) { console.warn('judge multi: missing MODEL_REGISTRY entry', alias); throw new Error('Unknown judge alias: ' + alias); }
+								const runtimeSecretId = await runtimeSecretForProvider(meta.provider);
+								const r = await api.post<{ job_id: string; access_token: string }>("/judge", {
+									resume_text: resumeText,
+									jd_text: jdText,
+									candidate_text: singleText,
+									judge_provider: meta.provider,
+									judge_model_id: meta.model,
+									runtime_secret_id: runtimeSecretId,
+									source_page: 'Resume Tailor Multi',
 								total_models_selected: judgeAliases.length,
 								input_models: inputModels,
 								request_group_id: requestGroupRef.current,
@@ -3054,16 +3259,18 @@ export default function ResumeTailorClient({ initialLoggedIn, initialAuthVerifie
 						return;
 					}
 					try { console.debug('[judge->multi-rank] candidates extracted', Object.fromEntries(Object.entries(baseCandidates).map(([k,v])=>[k, v.length]))); } catch {}
-					await fitBatchRef.current.startBatch('judge', judgeAliases, async (alias: string) => {
-						const meta = MODEL_REGISTRY[alias];
-						if (!meta) { console.warn('judge multi: missing MODEL_REGISTRY entry', alias); throw new Error('Unknown judge alias: ' + alias); }
-						const rankResp = await api.post<{ job_id: string; access_token: string }>("/benchmark/rank", {
-							base_resume: resumeText,
-							jd_text: jdText,
-							candidates: baseCandidates,
-							judge_provider: meta.provider,
-							judge_model_id: meta.model,
-							source_page: 'Resume Tailor Multi',
+						await fitBatchRef.current.startBatch('judge', judgeAliases, async (alias: string) => {
+							const meta = MODEL_REGISTRY[alias];
+							if (!meta) { console.warn('judge multi: missing MODEL_REGISTRY entry', alias); throw new Error('Unknown judge alias: ' + alias); }
+							const runtimeSecretId = await runtimeSecretForProvider(meta.provider);
+							const rankResp = await api.post<{ job_id: string; access_token: string }>("/benchmark/rank", {
+								base_resume: resumeText,
+								jd_text: jdText,
+								candidates: baseCandidates,
+								judge_provider: meta.provider,
+								judge_model_id: meta.model,
+								runtime_secret_id: runtimeSecretId,
+								source_page: 'Resume Tailor Multi',
 						}, { headers: { 'X-Client-Id': `${xClient}:${alias}`, 'Idempotency-Key': crypto.randomUUID() } });
 						return { jobId: rankResp.job_id };
 					});
@@ -3115,12 +3322,14 @@ export default function ResumeTailorClient({ initialLoggedIn, initialAuthVerifie
 						phaseTimesRef.current = { ...phaseTimesRef.current, judge: { start: performance.now(), model: firstAlias } };
 						setBatchPhase('judge');
 					try { console.debug('[judge->rank] candidates extracted', Object.fromEntries(Object.entries(candidates).map(([k,v])=>[k, v.length]))); } catch {}
+						const runtimeSecretId = await runtimeSecretForProvider((singleJudgeCheckbox ? judgeMetaEffective?.provider : judgeMeta!.provider));
 						const rankResp = await api.post<{ job_id: string; access_token: string }>("/benchmark/rank", {
 						base_resume: resumeText,
 						jd_text: jdText,
 						candidates,
 							judge_provider: (singleJudgeCheckbox ? judgeMetaEffective?.provider : judgeMeta!.provider),
 							judge_model_id: (singleJudgeCheckbox ? judgeMetaEffective?.model : judgeMeta!.model_id),
+						runtime_secret_id: runtimeSecretId,
 						source_page: "Resume Tailor Multi",
 					}, { headers: { "X-Client-Id": xClient, "Idempotency-Key": crypto.randomUUID() } });
 					setJobId(rankResp.job_id); setJobToken(rankResp.access_token); setJudgeRequested(true);
@@ -3152,12 +3361,14 @@ export default function ResumeTailorClient({ initialLoggedIn, initialAuthVerifie
 					await fitBatchRef.current.startBatch('judge', judgeAliases, async (alias: string) => {
 						const meta = MODEL_REGISTRY[alias];
 						if (!meta) { console.warn('judge multi: missing MODEL_REGISTRY entry', alias); throw new Error('Unknown judge alias: ' + alias); }
+						const runtimeSecretId = await runtimeSecretForProvider(meta.provider);
 						const r = await api.post<{ job_id: string; access_token: string }>("/judge", {
 							resume_text: resumeText,
 							jd_text: jdText,
 							candidate_text: (tailoredOutput || ''),
 							judge_provider: meta.provider,
 							judge_model_id: meta.model,
+							runtime_secret_id: runtimeSecretId,
 							source_page: 'Resume Tailor Multi',
 							total_models_selected: judgeAliases.length,
 							input_models: inputModels,
@@ -3200,6 +3411,7 @@ export default function ResumeTailorClient({ initialLoggedIn, initialAuthVerifie
 		try {
 			const providerForJudge = __single ? MODEL_REGISTRY[__single]?.provider : judgeMeta?.provider;
 			const modelIdForJudge = __single ? MODEL_REGISTRY[__single]?.model : judgeMeta?.model_id;
+			const runtimeSecretId = await runtimeSecretForProvider(providerForJudge);
 			
 			try { console.debug('[judge] single dispatch', { judgeLabel: judgeAliasForPricing, provider: providerForJudge, model_id: modelIdForJudge }); } catch {}
 			const r = await api.post<{ job_id: string; access_token: string }>("/judge", {
@@ -3208,6 +3420,7 @@ export default function ResumeTailorClient({ initialLoggedIn, initialAuthVerifie
 				candidate_text: cand,
 						judge_provider: providerForJudge,
 						judge_model_id: modelIdForJudge,
+				runtime_secret_id: runtimeSecretId,
 				source_page: "Resume Tailor",
 				total_models_selected: 1,
 				input_models: inputModels,
@@ -3219,7 +3432,7 @@ export default function ResumeTailorClient({ initialLoggedIn, initialAuthVerifie
 			const err = e as ApiError;
 			setOptimisticRunning(null); // Clear optimistic state on error
 			if (err.status === 401) { sessionExpiredRef.current = true; setAlert({ kind: "error", text: "Session expired. Log in again to continue." }); return; }
-			if (err.status === 402) { setAlert({ kind: "error", text: "Insufficient balance. Please add credits on Billing page." }); return; }
+			if (err.status === 402) { setAlert({ kind: "error", text: submission402Message(err) }); return; }
 			// Attempt to extract informative backend detail (FastAPI error JSON {detail})
 			let detail: string | undefined;
 			try {
@@ -3632,10 +3845,11 @@ export default function ResumeTailorClient({ initialLoggedIn, initialAuthVerifie
 	const fitMarkdown = useMemo(() => (fitOutput ? <Markdown>{fitOutput}</Markdown> : null), [fitOutput]);
 	const tailoredMarkdown = useMemo(() => (tailoredOutput ? <Markdown>{tailoredOutput}</Markdown> : null), [tailoredOutput]);
 	const judgeMarkdown = useMemo(() => (judgeOutput ? <Markdown>{judgeOutput}</Markdown> : null), [judgeOutput]);
-	const statsMarkdown = useMemo(() => (statsMd ? <Markdown>{statsMd}</Markdown> : null), [statsMd]);
+	const statsMarkdown = useMemo(() => (isLoggedIn === true && statsMd ? <Markdown>{statsMd}</Markdown> : null), [isLoggedIn, statsMd]);
 
 	return (
 		<div className="grid grid-cols-1 gap-4 pb-28 md:pb-0 md:grid-cols-2 text-slate-200 xl:gap-[18px] 2xl:gap-[18px] 2xl:grid-cols-[660px_660px] 2xl:max-w-[1338px] 2xl:mx-auto">
+			{rtDebugEnabled && <ResumeRunDebugOverlay events={runDebugEvents} setEvents={setRunDebugEvents} />}
 			{/* 🔍 DOUBLE LOAD DIAGNOSTIC BANNER */}
 			{reloadDiagnostic?.showWarning && (
 				<div className="col-span-full p-4 border-2 border-red-500 bg-red-950/30 rounded-lg">
@@ -3701,7 +3915,7 @@ export default function ResumeTailorClient({ initialLoggedIn, initialAuthVerifie
 			
 			{/* Your Information - left column on desktop, first in DOM */}
 			<div className="space-y-0 2xl:w-[660px]">
-				<h1 className="text-2xl font-semibold mt-1 mb-2 2xl:mb-3">Your Information</h1>
+				<h1 className="text-2xl font-semibold mt-1 mb-2 2xl:mb-3">Resume Tailor</h1>
 				{/* Inputs group with gap equal to column gap (18px) at XL/2XL */}
 				<div className="space-y-3 xl:space-y-[18px] 2xl:space-y-[18px] mt-0 md:pl-1">
 					<textarea
@@ -3709,12 +3923,12 @@ export default function ResumeTailorClient({ initialLoggedIn, initialAuthVerifie
 						className="w-full min-h-[400px] rounded-md border border-slate-700/60 bg-[#131820] p-3 placeholder:text-muted-foreground hover-thin-scrollbar xl:h-[496px] xl:min-h-[496px] xl:max-h-[496px] 2xl:h-[496px] 2xl:min-h-[496px] 2xl:max-h-[496px]"
 						value={resumeText}
 						onChange={(e) => setResumeText(e.target.value)}
-					// Keep normal styling; prevent editing via readOnly when applied
-					readOnly={appliedChecked && !uiDisabled}
-					disabled={uiDisabled}
-				/>
-				<textarea placeholder="Paste the target job description here..." className="w-full min-h-[400px] rounded-md border border-slate-700/60 bg-[#131820] p-3 placeholder:text-muted-foreground hover-thin-scrollbar xl:h-[496px] xl:min-h-[496px] xl:max-h-[496px] 2xl:h-[496px] 2xl:min-h-[496px] 2xl:max-h-[496px]" value={jdText} onChange={(e) => setJdText(e.target.value)} disabled={uiDisabled} />
-			</div>				{/* Compact block: checkbox, buttons, alerts, and hints */}
+						// Keep normal styling; prevent editing via readOnly when applied
+						readOnly={appliedChecked && !uiDisabled}
+						disabled={uiDisabled}
+					/>
+					<textarea placeholder="Paste the target job description here..." className="w-full min-h-[400px] rounded-md border border-slate-700/60 bg-[#131820] p-3 placeholder:text-muted-foreground hover-thin-scrollbar xl:h-[496px] xl:min-h-[496px] xl:max-h-[496px] 2xl:h-[496px] 2xl:min-h-[496px] 2xl:max-h-[496px]" value={jdText} onChange={(e) => setJdText(e.target.value)} disabled={uiDisabled} />
+				</div>				{/* Compact block: checkbox, buttons, alerts, and hints */}
 				<div className="space-y-3 mt-[15px] md:pl-1">
 					{/* Applied snapshot toggle */}
 					<div className="flex items-center gap-3 mt-1 mb-1 flex-wrap">
@@ -3920,6 +4134,7 @@ export default function ResumeTailorClient({ initialLoggedIn, initialAuthVerifie
 						<div className="text-2xl font-semibold mb-2 2xl:mb-3">Your Result</div>
 						<div
 							ref={fitBoxRef}
+							data-debug-result-panel="fit-forced"
 							tabIndex={0}
 							role="region"
 							aria-label="Result content. Press Ctrl+A to select all."
@@ -3937,7 +4152,7 @@ export default function ResumeTailorClient({ initialLoggedIn, initialAuthVerifie
 								<div className="text-muted-foreground italic">Click Fit, Tailor, or Judge to see results here.</div>
 							)}
 						</div>
-						{statsMarkdown && <div className="mt-2 text-sm text-slate-300">{statsMarkdown}</div>}
+						{statsMarkdown && <div data-debug-stats-block="true" className="mt-2 text-sm text-slate-300">{statsMarkdown}</div>}
 					</div>
 				) : (
 					<div className="mt-1 xl:mt-1 2xl:mt-1">
@@ -3945,6 +4160,7 @@ export default function ResumeTailorClient({ initialLoggedIn, initialAuthVerifie
 						<div className="text-2xl font-semibold mb-2 2xl:mb-3">Your Result</div>
 						<div
 							ref={singleResultRef}
+							data-debug-result-panel={effectiveResultType || "fit"}
 							tabIndex={0}
 							role="region"
 							aria-label="Result content. Press Ctrl+A to select all."
@@ -3978,7 +4194,7 @@ export default function ResumeTailorClient({ initialLoggedIn, initialAuthVerifie
 								<div className="text-muted-foreground italic">Click Fit, Tailor, or Judge to see results here.</div>
 							)}
 						</div>
-						{statsMarkdown && <div className="mt-3 md:mt-4 text-sm md:text-base text-slate-300 break-words">{statsMarkdown}</div>}
+						{statsMarkdown && <div data-debug-stats-block="true" className="mt-3 md:mt-4 text-sm md:text-base text-slate-300 break-words">{statsMarkdown}</div>}
 					</div>
 				)}
 			</div>
@@ -3994,7 +4210,7 @@ export default function ResumeTailorClient({ initialLoggedIn, initialAuthVerifie
 					)}
 					
 					{/* DEBUG PANEL - Visible on page */}
-					{isRtDebug() && (
+					{rtDebugEnabled && (
 						<div className="mb-2 p-4 bg-slate-800 border border-amber-500 rounded text-xs font-mono">
 							<div className="text-amber-500 font-bold mb-2">🔍 DEBUG: Model Selection State</div>
 							<div className="space-y-1 text-slate-300">
@@ -4062,4 +4278,3 @@ export default function ResumeTailorClient({ initialLoggedIn, initialAuthVerifie
 		</div>
 	);
 }
-

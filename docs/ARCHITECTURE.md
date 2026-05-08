@@ -45,73 +45,7 @@ Optional integrations include:
 
 - OpenAI, Anthropic, Gemini, and Grok for model execution
 - SMTP for verification, login, and notification emails
-- Stripe for credit purchases and billing flows
-- WebAuthn-compatible authenticators for passkeys
-- A secret manager such as Doppler for production secret injection
-
-## Deployment Model
-
-Local development is supported with:
-
-- Python and Poetry for backend dependencies
-- Node.js for frontend dependencies
-- Docker Compose for PostgreSQL, Redis, and optionally the full stack
-
-Production deployment assumes:
-
-- A managed or self-hosted PostgreSQL database
-- A Redis instance
-- Separate API, worker, and frontend processes or containers
-- Environment variables injected by the hosting platform or a secret manager
-
-The repository includes Dockerfiles for the API, worker, and frontend. A sanitized example Render blueprint is provided in `render.example.yaml` for self-hosters.# Architecture
-
-This document describes the public, self-hosted architecture of Restailor.
-
-## System Components
-
-- Frontend: Next.js application in `frontend/` serving the browser UI and proxying selected API requests.
-- API layer: FastAPI application in `main.py` exposing authentication, job orchestration, application tracking, analytics, and admin endpoints.
-- Worker layer: ARQ worker in `worker.py` consuming queued background jobs from Redis.
-- Data layer: PostgreSQL stores users, jobs, job outputs, applications, balances, charges, and audit data. Redis is used for queueing, coordination, and selected ephemeral state.
-
-## API Layer
-
-The API handles:
-
-- Authentication and session-related flows
-- Resume tailoring and fit-analysis requests
-- Streaming output to the frontend via Server-Sent Events
-- Application history and analytics endpoints
-- Admin and maintenance endpoints protected by auth and step-up checks
-
-The API depends on environment configuration loaded from `.env`, runtime environment variables, and `config/app.toml` defaults.
-
-## Data Layer
-
-- PostgreSQL is the system of record.
-- SQLAlchemy models live in `restailor/models.py` and migrations live in `alembic/versions/`.
-- Sensitive user content is designed to be encrypted at rest through `PII_ENCRYPTION_KEY`.
-- Redis is used by ARQ and for selected transient coordination tasks such as queueing and rate-limit support.
-
-## LLM and Processing Pipeline
-
-Typical request flow:
-
-1. The frontend submits a tailoring or fit request to the API.
-2. The API validates input, records job state, and enqueues background work.
-3. The worker processes the job, calls an enabled provider through `services/llm.py`, and writes progress and results back to storage.
-4. The frontend polls or subscribes to SSE updates until the job completes.
-
-The provider layer is optional but at least one provider key is required for live tailoring behavior.
-
-## External Integrations
-
-Optional integrations include:
-
-- OpenAI, Anthropic, Gemini, and Grok for model execution
-- SMTP for verification, login, and notification emails
-- Stripe for credit purchases and billing flows
+- Stripe is inert for normal user flows; Budget tracks BYOK provider-cost-equivalent usage
 - WebAuthn-compatible authenticators for passkeys
 - A secret manager such as Doppler for production secret injection
 
@@ -131,6 +65,9 @@ Production deployment assumes:
 - Environment variables injected by the hosting platform or a secret manager
 
 The repository includes Dockerfiles for the API, worker, and frontend. A sanitized example Render blueprint is provided in `render.example.yaml` for self-hosters.
+
+### Auth Flow
+- **POST /signup** → create user account
 - **POST /token** → issue JWT access token (bearer)
 - **Step-up for sensitive actions:** POST /auth/stepup/start (TOTP/recovery/email OTP) or WebAuthn options/verify
 
@@ -610,7 +547,7 @@ await save({
 ## Back-Pressure and Limits
 
 - **SlowAPI rate limits** on auth, step-up, and WebAuthn flows
-- **IP / ASN trial gating** ladder (see `[abuse.ip_asn]` in `config/app.toml`) deciding when free trials require 2FA or payment
+- **IP / ASN signup-grant gating** ladder (see `[abuse.ip_asn]` in `config/app.toml`) deciding when seeded Budget access requires 2FA or a hard block
 - **Concurrency per client_id** for jobs
 - **Provider timeouts** and abort registry for streaming
 - **Request size limits** (resume 100KB, JD 50KB, candidate 10KB)

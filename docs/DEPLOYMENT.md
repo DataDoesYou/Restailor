@@ -677,41 +677,16 @@ redis-cli FLUSHDB
 
 ---
 
-## Appendix A: Stripe Payment Setup
+## Appendix A: Stripe Legacy Notes
 
-### Quick Start
+Stripe is deprecated and inert for normal user flows. Restailor now runs in free BYOK-only mode: users manage Budget credits locally and provide their own provider API keys in Settings. Keep `STRIPE_ENABLED=false` unless you are deliberately testing an admin-only legacy utility.
 
-1. **Get Stripe keys** from https://dashboard.stripe.com/apikeys (test or live)
-2. **Add to secrets manager:**
-   ```bash
-   STRIPE_SECRET_KEY=sk_test_...  # or sk_live_ for production
-   STRIPE_PUBLISHABLE_KEY=pk_test_...  # or pk_live_ for production
-   STRIPE_ENABLED=true
-   ```
+### If You Deliberately Test Legacy Stripe Utilities
 
-3. **Create webhook endpoint:**
-   ```bash
-   stripe webhook_endpoints create \
-     --url=https://api.yourdomain.com/webhooks/stripe \
-     --enabled-events=checkout.session.completed,payment_intent.succeeded \
-     --api-key=sk_test_YOUR_KEY
-   ```
-
-4. **Save webhook secret:**
-   ```bash
-   STRIPE_WEBHOOK_SECRET=whsec_...
-   ```
-
-5. **Restart services** and test at `/billing`
-
-### Production Checklist
-
-- [ ] Switch to **live** Stripe keys (sk_live_, pk_live_)
-- [ ] Create production webhook endpoint
-- [ ] Update `STRIPE_WEBHOOK_SECRET` with production value
-- [ ] Verify webhook endpoint is enabled in Stripe Dashboard
-- [ ] Test end-to-end payment flow
-- [ ] Monitor webhook logs for errors
+- Use test-mode Stripe keys only.
+- Point a temporary webhook endpoint at a non-production API.
+- Set `STRIPE_WEBHOOK_SECRET` only for that test environment.
+- Keep the normal hosted app and self-hosted production deployments on Budget/BYOK, not checkout.
 
 **See archived `docs/archive/setup/STRIPE_SETUP.md` for detailed troubleshooting.**
 

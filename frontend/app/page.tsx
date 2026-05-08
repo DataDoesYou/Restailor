@@ -1,4 +1,5 @@
 import ResumeTailorClient from "@/components/pages/ResumeTailorClient";
+import HomepageDebugOverlay from "@/components/debug/HomepageDebugOverlay";
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import "server-only";
@@ -14,6 +15,8 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ [
 	const sp = await searchParams || {};
 	const reset = (Array.isArray(sp.reset) ? sp.reset[0] : sp.reset) ?? undefined;
 	const token = (Array.isArray(sp.token) ? sp.token[0] : sp.token) ?? undefined;
+	const debugParam = String((Array.isArray(sp.debug) ? sp.debug[0] : sp.debug) || "").toLowerCase();
+	const debugRequested = debugParam === "true" || debugParam === "1";
 	if ((reset === "1" || String(reset || "").toLowerCase() === "true") && token) {
 			redirect(`/reset-password?token=${encodeURIComponent(token)}`);
 	}
@@ -42,6 +45,9 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ [
 	// Trial/banner numbers for SSR to avoid $1.00 flicker on hydration
 	let initialTrialUsd: string | undefined = undefined;
 	let initialFreeReqHint: number | undefined = undefined;
+	let currentSnapshotLookupAttempted = false;
+	let showHomepageDebug = false;
+	let homepageDebugLoggedOut = false;
 
 	// Load snapshot: first try ?appliedKey=, then fall back to current_snapshot_key from database
 	try {
@@ -52,6 +58,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ [
 		
 		// If no appliedKey in URL, check if user has a current_snapshot_key in database
 		if (!snapshotKeyToLoad && hasAuth) {
+			currentSnapshotLookupAttempted = true;
 			const currentSnapshotRes = await fetch(`${getApiBase()}/users/me/current-snapshot`, {
 				headers: cookie ? { Cookie: cookie } : undefined,
 				credentials: "include",
@@ -141,6 +148,37 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ [
 		}
 	} catch {}
 
+	if (debugRequested) {
+		try {
+			const res = await fetch(`${getApiBase()}/config/frontend`, {
+				headers: cookie ? { Cookie: cookie } : undefined,
+				credentials: "include",
+				cache: "no-store",
+			});
+			if (res.ok) {
+				const js: any = await res.json().catch(() => null);
+				homepageDebugLoggedOut = js?.homepage_debug_logged_out === true;
+			}
+		} catch {}
+	}
+
+	if (debugRequested && hasAuth) {
+		try {
+			const res = await fetch(`${getApiBase()}/users/me`, {
+				headers: cookie ? { Cookie: cookie } : undefined,
+				credentials: "include",
+				cache: "no-store",
+			});
+			if (res.ok) {
+				const me: any = await res.json().catch(() => null);
+				showHomepageDebug = String(me?.role || "").toLowerCase() === "admin";
+			}
+		} catch {}
+	}
+	if (debugRequested && homepageDebugLoggedOut) {
+		showHomepageDebug = true;
+	}
+
 	return (
 		<div className="min-h-[600px] text-slate-300">
 			<ResumeTailorClient
@@ -161,6 +199,26 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ [
 				initialTrialUsd={initialTrialUsd}
 				initialFreeReqHint={initialFreeReqHint}
 			/>
+			{showHomepageDebug ? (
+				<HomepageDebugOverlay
+					seed={{
+						hasAuth,
+						initialApplied,
+						initialSnapshotLoaded,
+						hasInitialResume: typeof initialResumeText === "string" && initialResumeText.length > 0,
+						hasInitialJd: typeof initialJdText === "string" && initialJdText.length > 0,
+						hasFitOutput: typeof initialFitOutput === "string" && initialFitOutput.length > 0,
+						hasTailoredOutput: typeof initialTailoredOutput === "string" && initialTailoredOutput.length > 0,
+						hasJudgeOutput: typeof initialJudgeOutput === "string" && initialJudgeOutput.length > 0,
+						resultTypeInitial: String(resultTypeInitial || "fit"),
+						hasAppliedKey: Boolean(Array.isArray(sp.appliedKey) ? sp.appliedKey[0] : sp.appliedKey),
+						hasCurrentSnapshotLookup: currentSnapshotLookupAttempted,
+						debugLoggedOutEnabled: homepageDebugLoggedOut,
+						initialTrialUsd,
+						initialFreeReqHint,
+					}}
+				/>
+			) : null}
 		</div>
 	);
 }

@@ -32,7 +32,7 @@ See `docs/ARCHITECTURE.md` for the detailed component view.
 - Frontend: Next.js 16, React 19, Tailwind CSS
 - Data: PostgreSQL 16, Redis 7
 - Testing: Pytest, Playwright, Vitest
-- Integrations: OpenAI, Anthropic, Gemini, Grok, SMTP, Stripe, WebAuthn
+- Integrations: OpenAI, Anthropic, Gemini, Grok, SMTP, WebAuthn; Stripe is inert for normal user flows
 
 ## Quick Start
 
@@ -61,9 +61,8 @@ Edit `.env` and set, at minimum:
 - `PII_ENCRYPTION_KEY`
 - `TOTP_FERNET_KEY`
 - `SECURITY_REMEMBER_SIGNER_SECRET`
-- One provider key such as `OPENAI_API_KEY`
 
-For local-only development you can keep `STRICT_SECRETS=0` and leave optional integrations blank.
+Normal model runs are BYOK-only. Users add provider API keys in Settings; platform provider environment keys are optional and should be reserved for explicit admin or test utilities. For local-only development you can keep `STRICT_SECRETS=0` and leave optional integrations blank.
 
 ### Run Locally
 
@@ -85,18 +84,19 @@ docker compose -f docker/docker-compose.dev.yml up --build
 
 This starts Postgres, Redis, the API, the worker, and the frontend using the root `.env` file.
 
-### Stripe Webhooks in Docker Dev
+### Stripe Webhooks (Legacy/Admin Testing Only)
 
-This dev stack uses `cloudflared` to expose the local API (`http://api:8000`) through your Cloudflare tunnel.
-Point your Stripe webhook endpoint to that tunnel URL and keep `STRIPE_WEBHOOK_SECRET` in env/Doppler aligned with the Stripe endpoint secret.
+Stripe checkout is disabled for normal user flows. The retained webhook and Stripe settings exist only for legacy/admin testing paths.
 
-To verify tunnel logs:
+If you deliberately test those paths with the Docker dev stack, `cloudflared` can expose the local API (`http://api:8000`) through your Cloudflare tunnel. Point your Stripe webhook endpoint to that tunnel URL and keep `STRIPE_WEBHOOK_SECRET` in env/Doppler aligned with the Stripe endpoint secret.
+
+To verify tunnel logs during that testing:
 
 ```bash
 docker compose -f docker/docker-compose.dev.yml logs -f cloudflared
 ```
 
-Without webhook forwarding, Checkout can succeed but credits will not be applied.
+Keep `STRIPE_ENABLED=false` for ordinary local and production operation.
 
 Doppler is optional. If you use Doppler, you can run the same command with injected secrets:
 
@@ -120,7 +120,7 @@ The canonical template is `.env.example` at the repo root. It includes:
 
 - Core auth and encryption keys
 - Database and Redis settings
-- Optional email, captcha, analytics, and Stripe settings
+- Optional email, captcha, analytics, and inert Stripe settings
 - Frontend deployment metadata such as `NEXT_PUBLIC_SITE_URL`
 
 ## Project Structure

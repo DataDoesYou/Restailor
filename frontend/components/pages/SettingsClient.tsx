@@ -4,6 +4,58 @@ import { useCallback, useEffect, useState, useRef } from "react";
 import api, { ApiError } from "@/lib/api";
 
 type Alert = { kind: "info" | "success" | "warning" | "error"; text: string } | null;
+type ProviderKeyMeta = { provider: string; configured: boolean; key_tail?: string | null; storage_mode?: string | null; updated_at?: string | null };
+type UserSettingsPayload = { public_profile?: boolean; dont_save_future_data?: boolean; byok_sync_modes?: Record<string, boolean> | null };
+const BYOK_PROVIDERS = [
+	{ id: "anthropic", label: "Anthropic", placeholder: "sk-ant-api..." },
+	{ id: "gemini", label: "Google", placeholder: "AIza... or AQ..." },
+	{ id: "openai", label: "OpenAI", placeholder: "sk-proj-..." },
+	{ id: "xai", label: "xAI", placeholder: "xai-..." },
+];
+
+const defaultSyncModes = () => Object.fromEntries(BYOK_PROVIDERS.map((p) => [p.id, false])) as Record<string, boolean>;
+const maskKeyPreview = (value: string) => {
+	const key = String(value || "").trim();
+	if (!key) return "";
+	if (key.length <= 6) return `${key.slice(0, 1)}...${key.slice(-1)}`;
+	return `${key.slice(0, 2)}...${key.slice(-2)}`;
+};
+const localKeyPreview = (provider: string) => {
+	if (typeof window === "undefined") return "";
+	try {
+		const stored = JSON.parse(localStorage.getItem(`rt_byok_local_${provider}`) || "{}");
+		return String(stored.preview || (stored.tail ? `...${stored.tail}` : ""));
+	} catch {
+		return "";
+	}
+};
+async function readLocalKey(provider: string): Promise<string | null> {
+	if (typeof window === "undefined") return null;
+	const raw = localStorage.getItem(`rt_byok_local_${provider}`);
+	if (!raw) return null;
+	const payload = JSON.parse(raw);
+	const cryptoKey = await new Promise<CryptoKey | null>((resolve) => {
+		const open = indexedDB.open("restailor-byok", 1);
+		open.onerror = () => resolve(null);
+		open.onsuccess = () => {
+			try {
+				const tx = open.result.transaction("keys", "readonly");
+				const req = tx.objectStore("keys").get(provider);
+				req.onsuccess = () => resolve((req.result as CryptoKey) || null);
+				req.onerror = () => resolve(null);
+			} catch {
+				resolve(null);
+			}
+		};
+	});
+	if (!cryptoKey) return null;
+	const plain = await crypto.subtle.decrypt(
+		{ name: "AES-GCM", iv: new Uint8Array(payload.iv || []) },
+		cryptoKey,
+		new Uint8Array(payload.cipher || []),
+	);
+	return new TextDecoder().decode(plain);
+}
 
 interface SettingsClientProps {
 	initialSettings?: any | null;
@@ -25,6 +77,14 @@ export default function SettingsClient({ initialSettings = null }: SettingsClien
 	// Settings state - initialize from SSR if available
 	const [publicProfile, setPublicProfile] = useState(hadSsrSettings ? Boolean(initialSettings?.public_profile) : false);
 	const [dontSaveFutureData, setDontSaveFutureData] = useState(hadSsrSettings ? Boolean(initialSettings?.dont_save_future_data) : false);
+	const [providerKeys, setProviderKeys] = useState<Record<string, ProviderKeyMeta>>({});
+	const [keyInputs, setKeyInputs] = useState<Record<string, string>>({});
+	const [localPreviews, setLocalPreviews] = useState<Record<string, string>>({});
+	const [syncModes, setSyncModes] = useState<Record<string, boolean>>(() => ({
+		...defaultSyncModes(),
+		...(initialSettings?.byok_sync_modes || {}),
+	}));
+	const [savingProvider, setSavingProvider] = useState<string | null>(null);
 
 	// Delete data state
 	const [deleteDataPwd, setDeleteDataPwd] = useState("");
@@ -41,6 +101,136 @@ export default function SettingsClient({ initialSettings = null }: SettingsClien
 		}
 	}, [hadSsrSettings]);
 
+	useEffect(() => {
+		let cancelled = false;
+		(async () => {
+			try {
+				const data = await api.get<{ providers?: ProviderKeyMeta[] }>("/users/me/provider-keys");
+				if (cancelled) return;
+				const next: Record<string, ProviderKeyMeta> = {};
+				for (const row of data.providers || []) {
+					next[row.provider] = row;
+				}
+				setProviderKeys(next);
+			} catch {}
+		})();
+		return () => { cancelled = true; };
+	}, []);
+
+	useEffect(() => {
+		let cancelled = false;
+		(async () => {
+			const next: Record<string, string> = {};
+			for (const p of BYOK_PROVIDERS) {
+				const existing = localKeyPreview(p.id);
+				if (existing && !existing.startsWith("...")) {
+					next[p.id] = existing;
+					continue;
+				}
+				try {
+					const raw = await readLocalKey(p.id);
+					if (!raw) {
+						if (existing) next[p.id] = existing;
+						continue;
+					}
+					const preview = maskKeyPreview(raw);
+					next[p.id] = preview;
+					const stored = JSON.parse(localStorage.getItem(`rt_byok_local_${p.id}`) || "{}");
+					localStorage.setItem(`rt_byok_local_${p.id}`, JSON.stringify({ ...stored, preview }));
+				} catch {
+					if (existing) next[p.id] = existing;
+				}
+			}
+			if (!cancelled) setLocalPreviews(next);
+		})();
+		return () => { cancelled = true; };
+	}, []);
+
+	const persistSettings = useCallback(async (overrides: Partial<UserSettingsPayload>) => {
+		const body: UserSettingsPayload = {
+			public_profile: publicProfile,
+			dont_save_future_data: dontSaveFutureData,
+			byok_sync_modes: syncModes,
+			...overrides,
+		};
+		await api.put("/users/me/settings", body);
+	}, [dontSaveFutureData, publicProfile, syncModes]);
+
+	const saveLocalKey = useCallback(async (provider: string, rawKey: string) => {
+		const enc = new TextEncoder();
+		const material = await crypto.subtle.generateKey({ name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]);
+		const iv = crypto.getRandomValues(new Uint8Array(12));
+		const cipher = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, material, enc.encode(rawKey));
+		await new Promise<void>((resolve, reject) => {
+			const open = indexedDB.open("restailor-byok", 1);
+			open.onupgradeneeded = () => open.result.createObjectStore("keys");
+			open.onerror = () => reject(open.error);
+			open.onsuccess = () => {
+				const tx = open.result.transaction("keys", "readwrite");
+				tx.objectStore("keys").put(material, provider);
+				tx.oncomplete = () => resolve();
+				tx.onerror = () => reject(tx.error);
+			};
+		});
+		localStorage.setItem(`rt_byok_local_${provider}`, JSON.stringify({
+			iv: Array.from(iv),
+			cipher: Array.from(new Uint8Array(cipher)),
+			tail: rawKey.slice(-4),
+			preview: maskKeyPreview(rawKey),
+		}));
+	}, []);
+
+	const handleSaveProviderKey = useCallback(async (provider: string) => {
+		const raw = String(keyInputs[provider] || "").trim();
+		if (!raw) {
+			setAlert({ kind: "warning", text: "Enter a provider key before saving." });
+			return;
+		}
+		setSavingProvider(provider);
+		setAlert(null);
+		try {
+			if (syncModes[provider] === false) {
+				await saveLocalKey(provider, raw);
+				try { await api.delete(`/users/me/provider-keys/${provider}`); } catch {}
+				setProviderKeys((prev) => ({ ...prev, [provider]: { provider, configured: true, key_tail: maskKeyPreview(raw), storage_mode: "local" } }));
+				setLocalPreviews((prev) => ({ ...prev, [provider]: maskKeyPreview(raw) }));
+			} else {
+				const meta = await api.put<ProviderKeyMeta>(`/users/me/provider-keys/${provider}`, { api_key: raw, storage_mode: "server" });
+				localStorage.removeItem(`rt_byok_local_${provider}`);
+				setProviderKeys((prev) => ({ ...prev, [provider]: meta }));
+			}
+			setKeyInputs((prev) => ({ ...prev, [provider]: "" }));
+			setAlert({ kind: "success", text: "Provider key saved." });
+		} catch {
+			setAlert({ kind: "error", text: "Could not save provider key." });
+		} finally {
+			setSavingProvider(null);
+		}
+	}, [keyInputs, saveLocalKey, syncModes]);
+
+	const handleRemoveProviderKey = useCallback(async (provider: string) => {
+		setSavingProvider(provider);
+		try {
+			try {
+				await api.delete(`/users/me/provider-keys/${provider}`);
+			} catch (err) {
+				if ((err as ApiError)?.status !== 404) throw err;
+			}
+			localStorage.removeItem(`rt_byok_local_${provider}`);
+			setProviderKeys((prev) => ({ ...prev, [provider]: { provider, configured: false } }));
+			setLocalPreviews((prev) => {
+				const next = { ...prev };
+				delete next[provider];
+				return next;
+			});
+			setAlert({ kind: "success", text: "Provider key removed." });
+		} catch {
+			setAlert({ kind: "error", text: "Could not remove provider key." });
+		} finally {
+			setSavingProvider(null);
+		}
+	}, []);
+
 	// Load current settings on mount (abortable) - skip if we have SSR data
 	useEffect(() => {
 		if (hadSsrSettings) return; // Skip client fetch if we have SSR data
@@ -48,9 +238,10 @@ export default function SettingsClient({ initialSettings = null }: SettingsClien
 		const controller = new AbortController();
 		(async () => {
 			try {
-				const d = await api.get<{ public_profile?: boolean; dont_save_future_data?: boolean }>("/users/me/settings", { signal: controller.signal });
+				const d = await api.get<UserSettingsPayload>("/users/me/settings", { signal: controller.signal });
 				setPublicProfile(Boolean(d?.public_profile));
 				setDontSaveFutureData(Boolean(d?.dont_save_future_data));
+				setSyncModes({ ...defaultSyncModes(), ...(d?.byok_sync_modes || {}) });
 				setIsLoggedIn(true);
 			} catch (e) {
 				if (controller.signal.aborted) return;
@@ -94,7 +285,7 @@ export default function SettingsClient({ initialSettings = null }: SettingsClien
 		setAlert(null);
 		
 		try {
-			await api.put("/users/me/settings", {
+			await persistSettings({
 				public_profile: checked,
 				dont_save_future_data: dontSaveFutureData,
 			});
@@ -115,7 +306,7 @@ export default function SettingsClient({ initialSettings = null }: SettingsClien
 		} finally {
 			setSavingPublicProfile(false);
 		}
-	}, [dontSaveFutureData, loading, savingPublicProfile]);
+	}, [dontSaveFutureData, loading, persistSettings, savingPublicProfile]);
 
 	// Auto-save handler for don't save future data checkbox
 	const handleDontSaveToggle = useCallback(async (checked: boolean) => {
@@ -128,7 +319,7 @@ export default function SettingsClient({ initialSettings = null }: SettingsClien
 		setAlert(null);
 		
 		try {
-			await api.put("/users/me/settings", {
+			await persistSettings({
 				public_profile: publicProfile,
 				dont_save_future_data: checked,
 			});
@@ -149,7 +340,20 @@ export default function SettingsClient({ initialSettings = null }: SettingsClien
 		} finally {
 			setSavingDontSave(false);
 		}
-	}, [publicProfile, loading, savingDontSave]);
+	}, [publicProfile, loading, persistSettings, savingDontSave]);
+
+	const handleSyncModeToggle = useCallback(async (provider: string, checked: boolean) => {
+		const previous = syncModes;
+		const next = { ...defaultSyncModes(), ...syncModes, [provider]: checked };
+		setSyncModes(next);
+		setAlert(null);
+		try {
+			await persistSettings({ byok_sync_modes: next });
+		} catch {
+			setSyncModes(previous);
+			setAlert({ kind: "error", text: "Could not save sync preference." });
+		}
+	}, [persistSettings, syncModes]);
 
 	const onDeleteAllData = useCallback(async () => {
 		if (deletingData) return; // guard repeated clicks
@@ -205,7 +409,7 @@ export default function SettingsClient({ initialSettings = null }: SettingsClien
 	}, [deleteAccountPwd, deletingAccount]);
 
 	return (
-		<div className="mx-auto max-w-xl space-y-4 px-4 md:px-0" role="main">
+		<div className="mx-auto max-w-4xl space-y-4 px-4 md:px-0" role="main">
 			<h1 className="text-2xl font-semibold">Settings</h1>
 
 			{/* Error/warning alerts only (success shown inline) */}
@@ -282,6 +486,54 @@ export default function SettingsClient({ initialSettings = null }: SettingsClien
 					</div>
 				</div>
 			)}
+
+			<div className="rounded border border-slate-700 p-4 space-y-4">
+				<div>
+					<h2 className="text-lg font-semibold">BYOK Provider Keys</h2>
+					<p className="text-sm text-slate-400 mt-1">Model runs require your own provider API key.</p>
+				</div>
+				<div className="space-y-3">
+					{BYOK_PROVIDERS.map((p) => {
+						const meta = providerKeys[p.id];
+						const localPreview = localPreviews[p.id] || localKeyPreview(p.id);
+						const local = meta?.storage_mode === "local" || Boolean(localPreview);
+						const keyPreview = meta?.key_tail || localPreview;
+						const displayValue = keyInputs[p.id] ?? (meta?.configured || local ? keyPreview : "");
+						return (
+							<div key={p.id} className="rounded border border-slate-700 p-3">
+								<div className="flex flex-col gap-3 md:flex-row md:items-center">
+									<div className="md:w-32">
+										<div className="font-medium">{p.label}</div>
+										<div className="text-xs text-slate-400">{meta?.configured || local ? "Saved" : "Missing"}</div>
+									</div>
+									<div className="min-w-0 flex-1">
+										<input
+											type={keyInputs[p.id] !== undefined ? "password" : "text"}
+											value={displayValue}
+											onChange={(e) => setKeyInputs((prev) => ({ ...prev, [p.id]: e.target.value }))}
+											placeholder={p.placeholder}
+											className="w-full rounded border border-slate-700 bg-transparent px-3 py-2 text-sm"
+										/>
+									</div>
+									<label className="inline-flex items-center gap-2 text-sm text-slate-300">
+										<input
+											type="checkbox"
+											className="accent-amber-500"
+											checked={Boolean(syncModes[p.id])}
+											onChange={(e) => handleSyncModeToggle(p.id, e.target.checked)}
+										/>
+										Sync to server
+									</label>
+									<div className="flex gap-2">
+										<button className="rounded bg-slate-700 px-3 py-2 text-sm hover:bg-slate-600 disabled:opacity-50" disabled={savingProvider === p.id} onClick={() => handleSaveProviderKey(p.id)}>Save</button>
+										<button className="rounded border border-slate-700 px-3 py-2 text-sm hover:bg-slate-800 disabled:opacity-50" disabled={savingProvider === p.id} onClick={() => handleRemoveProviderKey(p.id)}>Remove</button>
+									</div>
+								</div>
+							</div>
+						);
+					})}
+				</div>
+			</div>
 			
 			<hr className="border-slate-700" />
 			<h2 className="text-xl font-semibold">Delete your data</h2>
@@ -356,7 +608,7 @@ export default function SettingsClient({ initialSettings = null }: SettingsClien
 						<ul className="list-disc list-inside ml-2 space-y-1">
 							<li>Everything from "Delete all my data" above</li>
 							<li>Your account (username, email, password)</li>
-							<li>All credits (forfeited, no refunds)</li>
+							<li>Budget balance and saved provider-key metadata</li>
 							<li>Application tracking and analytics</li>
 							<li>All settings and preferences</li>
 						</ul>
@@ -409,4 +661,3 @@ export default function SettingsClient({ initialSettings = null }: SettingsClien
 		</div>
 	);
 }
-

@@ -152,9 +152,11 @@ class ModelSettings(BaseModel):
             logger.info(f"Validating {field_name}: model_id={model_id}")
             
             if model_id and model_id not in allowlist:
-                # Model is deprecated, auto-upgrade it
-                logger.warning(f"Deprecated model for {field_name}: {model_id}, auto-upgrading")
+                # Known deprecated models are upgraded. Unknown model IDs remain invalid.
+                logger.warning(f"Invalid or deprecated model for {field_name}: {model_id}, checking upgrade map")
                 upgraded = apply_model_upgrades(model_id)
+                if upgraded not in allowlist:
+                    raise ValueError(f"Invalid model for {field_name}: {model_id}")
                 logger.info(f"Auto-upgraded {field_name}: {model_id} -> {upgraded}")
                 return upgraded
             
@@ -187,7 +189,7 @@ def get_allowed_models() -> set[str]:
     Extracts model IDs from all enabled providers in config/app.toml.
     
     Returns:
-        Set of valid model ID strings (e.g., {"gpt-5", "claude-4.1-opus", "gemini-3.1-pro-preview", "grok-4"})
+        Set of valid model ID strings (e.g., {"gpt-5.5", "claude-opus-4-7", "gemini-3.1-pro-preview", "grok-4.3"})
     """
     models: set[str] = set()
     
@@ -318,14 +320,21 @@ def get_model_upgrade_map() -> dict[str, str]:
     # Define explicit upgrade mappings for known deprecations
     # This section can be used for custom upgrade paths (e.g., GPT-4 -> GPT-5 Instant instead of Thinking)
     explicit_upgrades = {
-        "gpt-5.1-instant": "gpt-5.3-chat-latest",
-        "gpt-5.1-thinking": "gpt-5.4",
-        "gpt-5.2-chat-latest": "gpt-5.3-chat-latest",
-        "gpt-5.2": "gpt-5.4",
+        "gpt-5.1-instant": "chat-latest",
+        "gpt-5.1-thinking": "gpt-5.5",
+        "gpt-5.2-chat-latest": "chat-latest",
+        "gpt-5.2": "gpt-5.5",
+        "gpt-5.4-mini": "chat-latest",
+        "gpt-5.3-chat-latest": "chat-latest",
+        "gpt-5.4": "gpt-5.5",
         "claude-sonnet-4-5-20250929": "claude-sonnet-4-6",
-        "claude-opus-4-5-20251101": "claude-opus-4-6",
+        "claude-opus-4-5-20251101": "claude-opus-4-7",
+        "claude-opus-4-6": "claude-opus-4-7",
         "gemini-3-pro-preview": "gemini-3.1-pro-preview",
         "gemini-2.5-flash": "gemini-3-flash-preview",
+        "grok-4-fast": "grok-4-1-fast-reasoning",
+        "grok-4-0709": "grok-4.3",
+        "grok-4": "grok-4.3",
     }
     
     upgrade_map.update(explicit_upgrades)
@@ -342,12 +351,12 @@ def get_model_upgrade_map() -> dict[str, str]:
 def apply_model_upgrades(model_id: str) -> str:
     """Apply automatic model upgrade/fallback if needed.
     
-    Checks if the given model is still in the allowlist. If not:
-    1. Try to find an explicit upgrade mapping
-    2. Fall back to the default model for the same provider (by finding which provider has this model)
-    3. Fall back to any default model
+    Checks if the given model is still in the allowlist. If not, only explicit
+    known-deprecated mappings are upgraded. Unknown values are returned
+    unchanged so validation can reject them.
     
-    This ensures users always have a valid model even when models are deprecated.
+    This ensures saved preferences survive known model retirements without
+    accepting arbitrary model IDs.
     
     Args:
         model_id: Model identifier (e.g., "gpt-5.1-instant", "claude-sonnet-4-6")
@@ -365,7 +374,7 @@ def apply_model_upgrades(model_id: str) -> str:
         # Model is still valid, return as-is
         return model_id
     
-    # Model is deprecated/invalid, need to upgrade
+    # Model is deprecated/invalid. Upgrade only if this is a known mapping.
     logger.info(f"Model {model_id} not in allowlist, finding replacement")
     
     # 1. Check explicit upgrade mapping
@@ -375,25 +384,8 @@ def apply_model_upgrades(model_id: str) -> str:
         logger.info(f"Using explicit upgrade mapping: {model_id} -> {replacement}")
         return replacement
     
-    # 2. Try to find which provider this model belongs to and get its default
-    by_provider = get_models_by_provider()
-    for provider, models in by_provider.items():
-        if model_id in models.values():
-            # Found the provider, use its default tailor model
-            if "tailor" in models:
-                fallback_id = models["tailor"]
-                logger.info(f"Using provider fallback: {model_id} -> {fallback_id}")
-                return fallback_id
-            break
-    
-    # 3. Ultimate fallback: use any default model
-    default_model = get_default_model_for_role("tailor")
-    if default_model:
-        logger.warning(f"Using system default fallback: {model_id} -> {default_model}")
-        return default_model
-    
-    # 4. If all else fails, return original (validation will catch it later)
-    logger.error(f"Could not find replacement for deprecated model: {model_id}")
+    # Unknown values must be rejected by the caller's validation path.
+    logger.error(f"Could not find explicit replacement for invalid model: {model_id}")
     return model_id
 
 

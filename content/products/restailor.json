@@ -1,15 +1,16 @@
 {
   "productName": "Restailor",
-  "tagline": "AI-powered resume tailoring and application tracking for job seekers.",
-  "overview": "Restailor is a SaaS platform that helps candidates tailor their resumes to specific job descriptions using generative AI. It includes a comprehensive application tracking system to manage job search progress from application to offer. The system provides analytics and insights to help users optimize their job search strategy.",
+  "tagline": "Free open-source resume tailoring and application tracking for job seekers.",
+  "overview": "Restailor is a free, open-source workspace for tailoring resumes and tracking job applications. Candidates can compare fit, customize resumes for specific job descriptions, and use their own AI provider keys for model-powered resume help.",
   "problem": "Job seekers often struggle to customize their resumes for every application, leading to lower response rates. Managing multiple applications across different stages can become disorganized and difficult to track effectively.",
-  "solution": "Restailor automates the resume customization process by analyzing job descriptions and generating tailored content that highlights relevant skills. It integrates this with a structured tracking system and analytics dashboard to organize the entire job search lifecycle.",
+  "solution": "Restailor automates the resume customization process by analyzing job descriptions and generating tailored content that highlights relevant skills. It pairs that workflow with application tracking, analytics, BYOK provider access, and local budget accounting for the whole job search lifecycle.",
   "coreCapabilities": [
-    "AI-powered resume generation tailored to specific job descriptions",
+    "BYOK AI-powered resume generation tailored to specific job descriptions",
     "Candidate fit analysis to identify strengths and gaps",
     "Application tracking with Kanban-style workflow stages",
     "Real-time streaming feedback for content generation",
     "Analytics dashboards for application history and conversion metrics",
+    "Provider-cost budget planning without Restailor markup",
     "Secure data handling with encryption at rest"
   ],
   "technicalOverview": "The platform is built on a FastAPI backend and Next.js frontend, utilizing PostgreSQL for data persistence. It employs a Redis-backed worker queue for asynchronous AI processing and Server-Sent Events for real-time updates. Security features include multi-factor authentication and column-level database encryption. The infrastructure is containerized with Docker for consistent deployment across environments.",

@@ -51,7 +51,13 @@ CHANGE SNAPSHOT (2025-09-11)
 | GET | /pricing/median | none | median of last 100 |
 | GET | /pricing/average | none | trimmed average |
 | GET | /users/me/balance | bearer | user balance |
-| GET | /billing/summary | bearer | balance + rates + averages |
+| GET | /budget/summary | bearer | Budget balance + provider rates + averages |
+| GET | /billing/summary | bearer | compatibility alias for Budget summary |
+| POST | /budget/credits/adjust | bearer | add/remove preset Budget credits |
+| GET | /users/me/provider-keys | bearer | list BYOK provider-key metadata; never returns raw keys |
+| PUT | /users/me/provider-keys/{provider} | bearer | save encrypted server-synced key for a supported provider |
+| DELETE | /users/me/provider-keys/{provider} | bearer | delete server-synced key metadata for a provider |
+| POST | /byok/runtime-secrets | bearer | short-lived local-only key handoff for a model run |
 
 ## Admin Credits
 
@@ -188,13 +194,16 @@ Headers/Cookies
 - GET /users/me/balance
   - 200: { balance_cents, balance_usd, currency }
 
-- GET /billing/summary
+- GET /budget/summary
   - 200: { balance, multiplier, price_map, averages_by_model, averages_global }
+
+- GET /billing/summary
+  - Compatibility alias for `/budget/summary`.
 
 ## Pricing Configuration
 
 - Pricing is sourced from TOML config only:
-  - [pricing] for multiplier/currency
+  - [pricing] for currency and the fixed BYOK multiplier (`1`)
   - [pricing.models] for input/output rates
   - [pricing.aliases] for display-name aliases
 
@@ -245,4 +254,4 @@ CHANGELOG
 - 2025-09-07: Added /tailor/submit, /fit, /judge, clarified step-up headers & cookies, capability tokens.
 - 2025-09-04: Documented admin credits API endpoints.
 - 2025-09-02: Initial API contracts for health, jobs, WebAuthn, and step-up.
-- 2025-09-02: Added pricing, billing, and admin pricing endpoints.
+- 2025-09-02: Added pricing, Budget/billing compatibility, and admin credit endpoints.

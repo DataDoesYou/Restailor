@@ -56,11 +56,14 @@ export default function BillingClient({ initialBalance = null, initialTrial = nu
 	useEffect(() => {
 		let cancelled = false;
 		(async () => {
+			const loadSummary = async () => {
+				return await api.get<Summary>("/budget/summary").catch(() => null);
+			};
 			try {
 				const [bal, tr, sum, me] = await Promise.all([
 					api.get<Balance>("/users/me/balance").catch(() => null),
 					api.get<Trial>("/credits/trial-eligibility").catch(() => null),
-					api.get<Summary>("/billing/summary").catch(() => null),
+					loadSummary(),
 					api.get<{ role?: string }>("/users/me").catch(() => null),
 				]);
 				if (cancelled) return;
@@ -83,10 +86,10 @@ export default function BillingClient({ initialBalance = null, initialTrial = nu
 		return () => { cancelled = true; };
 	}, []);
 
-	// Client-side redirect for /billing route (protected workspace)
+	// Client-side redirect for /budget route (protected workspace)
 	useEffect(() => {
 		if (authPending) return; // Wait for auth check to complete
-		if (isLoggedIn === false && typeof window !== 'undefined' && window.location.pathname === '/billing') {
+		if (isLoggedIn === false && typeof window !== 'undefined' && window.location.pathname === '/budget') {
 			// Redirect logged-out users to homepage
 			window.location.href = '/';
 		}
@@ -144,7 +147,7 @@ export default function BillingClient({ initialBalance = null, initialTrial = nu
 	const onClaimTrial = useCallback(async () => {
 		try {
 			await api.post("/credits/claim-trial", {});
-			setAlert({ kind: "success", text: "Trial claimed. Your balance has been updated." });
+			setAlert({ kind: "success", text: "Budget balance updated." });
 			// Refresh balance
 			try {
 				const b = await api.get<Balance>("/users/me/balance");
@@ -158,53 +161,23 @@ export default function BillingClient({ initialBalance = null, initialTrial = nu
 			const err = e as ApiError;
 			let detail: string | undefined;
 			try { detail = typeof err.detail === "string" ? err.detail : (err.detail as any)?.detail; } catch {}
-			setAlert({ kind: "error", text: detail ? `Cannot claim: ${detail}` : "Could not claim free trial." });
+			setAlert({ kind: "error", text: detail ? `Cannot update Budget: ${detail}` : "Could not update Budget." });
 		}
 	}, []);
 
 	const amounts = [5, 10, 25, 50, 100];
-	const onPurchase = useCallback(async (usd: number) => {
+	const onAdjustBudget = useCallback(async (usd: number, direction: "add" | "remove") => {
 		try {
-			const r = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/billing/purchase-intent`, {
-				method: "POST",
-				credentials: "include",
-				headers: {
-					"Content-Type": "application/json",
-					"X-Requested-With": "XMLHttpRequest",
-				},
-				body: JSON.stringify({ amount_usd: usd }),
-			});
-			if (r.status === 501) {
-				setAlert({ kind: "info", text: "Stripe coming soon" });
-			} else if (r.ok) {
-				const data = await r.json();
-				if (data.checkout_url) {
-					// Redirect to Stripe Checkout
-					window.location.href = data.checkout_url;
-				} else {
-					setAlert({ kind: "error", text: "No checkout URL returned" });
-				}
-			} else {
-				// Parse error details from API response
-				let errorMessage = "Purchase failed";
-				try {
-					const errorData = await r.json();
-					if (errorData.detail) {
-						const detail = typeof errorData.detail === "string" 
-							? errorData.detail 
-							: JSON.stringify(errorData.detail);
-						errorMessage = `Purchase failed: ${detail}`;
-					} else {
-						errorMessage = `Purchase failed (${r.status} ${r.statusText})`;
-					}
-				} catch {
-					errorMessage = `Purchase failed (${r.status} ${r.statusText})`;
-				}
-				setAlert({ kind: "error", text: errorMessage });
+			const data = await api.post<{ ok?: boolean; balance?: Balance }>("/budget/credits/adjust", { amount_usd: usd, direction });
+			if (data?.balance) {
+				setBalance(data.balance);
+				window.dispatchEvent(new CustomEvent("rt-balance", { detail: data.balance }));
 			}
+			setAlert({ kind: "success", text: direction === "add" ? `Added $${usd} to your Budget.` : `Removed $${usd} from your Budget.` });
 		} catch (err) {
-			const errorMsg = err instanceof Error ? err.message : "Unknown error";
-			setAlert({ kind: "error", text: `Network error: ${errorMsg}` });
+			const apiErr = err as ApiError;
+			const detail = typeof apiErr?.detail === "string" ? apiErr.detail : "Budget adjustment failed.";
+			setAlert({ kind: "error", text: detail });
 		}
 	}, []);
 
@@ -332,61 +305,27 @@ export default function BillingClient({ initialBalance = null, initialTrial = nu
 	};
 
 	return (
-		<div className="space-y-4 px-4 md:px-0">
-			<h1 className="text-2xl font-semibold">Billing</h1>
+		<div className="mx-auto max-w-4xl space-y-4 pb-8 px-4 md:px-0" role="main">
+			<h1 className="text-2xl font-semibold">Budget</h1>
 
 			{alert && (
 				<div className={{ info: "text-blue-400", success: "text-green-400", warning: "text-yellow-400", error: "text-red-400" }[alert.kind]}>{alert.text}</div>
 			)}
 
-			{/* Trial nudges */}
-			{trial && (
-				<div>
-					{trial.reason === "needs_2fa" ? (
-						<div>
-							<h2 className="text-xl font-semibold">Free Trial</h2>
-							<p>Enable 2FA with an authenticator app or add a passkey to claim your free trial.</p>
-							{formatTrialModels(trial.trial_models) && (
-								<p className="text-sm text-slate-400 mt-2">
-									Trial includes: {formatTrialModels(trial.trial_models)}
-									{trial.trial_duration_days && ` (${trial.trial_duration_days} days)`}
-								</p>
-							)}
-						<div className="flex gap-2 mt-3">
-							<Link href="/security" className="rounded bg-slate-700 px-3 py-2 text-center">Go to Security</Link>
-						</div>
-							<hr className="my-4 border-slate-700" />
-						</div>
-		    ) : trial.eligible ? (
-						<div>
-							<h2 className="text-xl font-semibold">Free Trial</h2>
-							{formatTrialModels(trial.trial_models) && (
-								<p className="text-sm text-slate-400 mt-2">
-									Trial includes: {formatTrialModels(trial.trial_models)}
-									{trial.trial_duration_days && ` (${trial.trial_duration_days} days)`}
-								</p>
-							)}
-				    <button className="rounded bg-slate-700 px-3 py-2 mt-2" onClick={onClaimTrial}>Claim Free Trial</button>
-							<hr className="my-4 border-slate-700" />
-						</div>
-					) : null}
-				</div>
-			)}
-
-			{/* Active trial info - show when user has trial balance but no purchased balance */}
+			{/* Legacy seeded balance info - show when existing restricted balance is present */}
 			{balance && (balance.trial_balance_cents ?? 0) > 0 && (balance.purchased_balance_cents ?? 0) === 0 && trial?.trial_models && trial.trial_models.length > 0 && (
 				<div className="bg-slate-800/50 border border-slate-700 rounded p-4">
-					<h2 className="text-lg font-semibold mb-2">Using Free Trial</h2>
+					<h2 className="text-lg font-semibold mb-2">Using Seeded Budget</h2>
 					<p className="text-sm text-slate-300">
-						You're currently using trial credits. Available models: {formatTrialModels(trial.trial_models)}
+						This Budget balance is limited to these models: {formatTrialModels(trial.trial_models)}
 					</p>
 					{trial.trial_duration_days && (
 						<p className="text-xs text-slate-400 mt-1">
-							Trial credits expire after {trial.trial_duration_days} days
+							This seeded Budget expires after {trial.trial_duration_days} days
 						</p>
 					)}
 					<p className="text-sm text-slate-400 mt-2">
-						Purchase credits to unlock all models.
+						Add budget credits to continue tracking provider-cost-equivalent usage.
 					</p>
 				</div>
 			)}
@@ -398,12 +337,20 @@ export default function BillingClient({ initialBalance = null, initialTrial = nu
 					<div className="text-3xl font-semibold">${balance && balance.balance_usd !== undefined ? String(balance.balance_usd) : "0.00"}</div>
 				</div>
 
-				{/* Purchase credits */}
+				{/* Budget controls */}
 				<div className="md:col-span-2">
-					<h2 className="text-xl font-semibold">Purchase Credits</h2>
+					<h2 className="text-xl font-semibold">Budget Credits</h2>
+					<div className="text-sm text-slate-400 mt-1">Budget is a local usage control for your own provider API keys.</div>
+					<div className="text-sm text-slate-300 mt-3">Add</div>
 					<div className="grid grid-cols-3 md:grid-cols-5 gap-2 mt-3">
 						{amounts.map((amt) => (
-							<button key={amt} className="rounded bg-slate-700 px-3 py-2 hover:bg-slate-600 active:bg-slate-500" onClick={() => onPurchase(amt)}>${amt}</button>
+							<button key={`add-${amt}`} className="rounded bg-slate-700 px-3 py-2 hover:bg-slate-600 active:bg-slate-500" onClick={() => onAdjustBudget(amt, "add")}>${amt}</button>
+						))}
+					</div>
+					<div className="text-sm text-slate-300 mt-4">Remove</div>
+					<div className="grid grid-cols-3 md:grid-cols-5 gap-2 mt-3">
+						{amounts.map((amt) => (
+							<button key={`remove-${amt}`} className="rounded border border-slate-700 px-3 py-2 hover:bg-slate-800 active:bg-slate-700" onClick={() => onAdjustBudget(amt, "remove")}>${amt}</button>
 						))}
 					</div>
 				</div>
@@ -510,7 +457,7 @@ export default function BillingClient({ initialBalance = null, initialTrial = nu
 							</tbody>
 						</table>
 					</div>
-					{((summary?.price_map && Object.keys(summary.price_map).length) || summary?.multiplier != null) ? (
+					{summary?.price_map && Object.keys(summary.price_map).length ? (
 						<hr className="my-4 border-slate-700" />
 					) : null}
 				</div>
@@ -519,9 +466,7 @@ export default function BillingClient({ initialBalance = null, initialTrial = nu
 			{/* Price map */}
 			<div>
 					<h2 className="text-xl font-semibold">Current Price Map</h2>
-					{summary?.multiplier != null && (
-						<div className="text-slate-400 text-sm">Multiplier: x{String(summary.multiplier)}</div>
-					)}
+					<div className="text-slate-400 text-sm">Provider rates shown for budget planning. Restailor does not add a markup.</div>
 					{summary?.price_map && Object.keys(summary.price_map).length > 0 ? (
 						<div className="overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0 mt-2">
 							<table className="min-w-full text-sm">
@@ -541,15 +486,15 @@ export default function BillingClient({ initialBalance = null, initialTrial = nu
 											modelIdToAlias[m.model_id] = m.alias;
 											modelIdToOrder[m.model_id] = idx;
 										});
-										const activeModelIds = new Set(MODEL_OPTIONS.map(m => m.model_id));
 										
-										// Filter and sort by MODEL_OPTIONS order (sidebar order)
+										// Show every configured provider price. Sidebar models stay first,
+										// followed by any additional configured prices alphabetically.
 										return Object.entries(summary.price_map)
-											.filter(([modelId]) => activeModelIds.has(modelId))
 											.sort(([a], [b]) => {
 												const orderA = modelIdToOrder[a] ?? 999;
 												const orderB = modelIdToOrder[b] ?? 999;
-												return orderA - orderB;
+												if (orderA !== orderB) return orderA - orderB;
+												return a.localeCompare(b);
 											})
 											.map(([modelId, rates]) => (
 												<tr key={modelId}>
@@ -562,10 +507,13 @@ export default function BillingClient({ initialBalance = null, initialTrial = nu
 								</tbody>
 							</table>
 						</div>
-					) : null}
+					) : (
+						<div className="mt-3 rounded border border-slate-700 p-3 text-sm text-slate-400">
+							Price map is unavailable from the API response.
+						</div>
+					)}
 					<div className="mt-2" />
 				</div>
 		</div>
 	);
 }
-

@@ -28,7 +28,7 @@ Please select a Fit model in the sidebar before running. (label=NULL, meta=NULL,
 ### Test 2: Model Selected (Happy Path)
 1. Navigate to `http://localhost:3000/resume`
 2. Open the sidebar
-3. Select a Fit model (e.g., "GPT-5.3 Chat")
+3. Select a Fit model (e.g., "GPT-5.5 Instant")
 4. Paste text into resume and JD textareas
 5. Click the "Check Fit" button
 
@@ -36,7 +36,7 @@ Please select a Fit model in the sidebar before running. (label=NULL, meta=NULL,
 - No validation error (request should proceed)
 - OR if error appears, it should show the actual label and meta values:
   ```
-  (label=GPT-5.3 Chat, meta=openai/gpt-5.3-chat-latest, multi=NO)
+  (label=GPT-5.5 Instant, meta=openai/chat-latest, multi=NO)
   ```
 
 ### Test 3: Multi-Mode Active

@@ -97,11 +97,18 @@ def load_config() -> Dict[str, Any]:
     diagnostics.setdefault('allow_ips', ['127.0.0.1'])
     # New: gate UI debug logging globally without URL/localStorage
     diagnostics.setdefault('rt_debug_ui', False)
+    diagnostics.setdefault('homepage_debug_logged_out', False)
     # Env override so platforms like Doppler can toggle without editing files
     env_rt_dbg = os.getenv('RT_DEBUG_UI')
     if env_rt_dbg is not None:
         try:
             diagnostics['rt_debug_ui'] = str(env_rt_dbg).strip().lower() in {'1','true','yes','on','y'}
+        except Exception:
+            pass
+    env_homepage_logged_out = os.getenv('HOMEPAGE_DEBUG_LOGGED_OUT')
+    if env_homepage_logged_out is not None:
+        try:
+            diagnostics['homepage_debug_logged_out'] = str(env_homepage_logged_out).strip().lower() in {'1','true','yes','on','y'}
         except Exception:
             pass
     # Security defaults

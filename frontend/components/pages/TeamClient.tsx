@@ -8,10 +8,10 @@ export default function TeamClient() {
         <h1 className="text-3xl font-bold mb-6">Meet our team</h1>
         <div className="text-slate-300 space-y-4 max-w-2xl leading-relaxed">
           <p>
-            Restailor is a production AI platform for resume analysis and job application workflows. The system prioritizes accuracy, reliability, and responsible data handling.
+            Restailor is a free, open-source workspace for resume analysis, resume tailoring, and job application workflows. It is hosted for job seekers to use with their own provider keys.
           </p>
           <p>
-            The platform is founder-led and independently operated. This governance model ensures a direct focus on product quality.
+            The project is founder-led and independently operated, with a direct focus on practical utility, responsible data handling, and keeping the hosted experience available as a community-friendly tool.
           </p>
         </div>
       </section>
@@ -38,7 +38,7 @@ export default function TeamClient() {
             </div>
 
             <p className="text-slate-300 leading-relaxed text-sm">
-              Gueorgui has 15 years of experience building production data platforms. As founder of DataDoesYou and Restailor, he owns the full technical lifecycle from architecture through deployment. He builds secure AI systems for resume analysis and job matching with strict PII protection.
+              Gueorgui has 15 years of experience building production data platforms. As founder of DataDoesYou and Restailor, he owns the full technical lifecycle from architecture through deployment. He builds secure AI systems for resume analysis and job matching with strict PII protection, and maintains Restailor as an open-source project.
             </p>
 
             <div>

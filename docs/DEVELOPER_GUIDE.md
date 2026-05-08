@@ -46,14 +46,46 @@ cp .env.example .env
 
 Edit `.env` with the required secrets and at least one provider key for live model calls.
 
+If you use Doppler, either pass the project/config explicitly:
+
+```bash
+doppler run --project restailor --config dev -- docker compose -f docker/docker-compose.dev.yml up --build
+```
+
+Or bind the current checkout once so later `doppler run -- ...` commands work from this folder:
+
+```bash
+doppler setup --project restailor --config dev
+```
+
 ### 2. Start Infrastructure
 
-```powershell
-doppler run -- docker compose -f docker/docker-compose.dev.yml up -d postgres redis
+```bash
+doppler run --project restailor --config dev -- docker compose -f docker/docker-compose.dev.yml up -d postgres redis
 
 # Or without Doppler:
 docker compose -f docker/docker-compose.dev.yml up -d postgres redis
 ```
+
+The Docker dev stack uses the default local ports:
+
+- Frontend: http://localhost:3000
+- API: http://localhost:8000
+- Postgres: `localhost:5432`
+- Redis: `localhost:6379`
+
+If another local stack is running, stop it first or override the host ports:
+
+```bash
+POSTGRES_HOST_PORT=15432 REDIS_HOST_PORT=16379 API_HOST_PORT=8001 NEXT_HOST_PORT=3001 \
+  doppler run --project restailor --config dev -- docker compose -f docker/docker-compose.dev.yml up --build
+```
+
+The frontend public API and site URLs follow `API_HOST_PORT` and `NEXT_HOST_PORT` unless explicitly overridden.
+
+The default Postgres volume preserves existing local data from the previous project name. Docker may warn that `resume-tailor_pgdata` was created by the old project name; that warning is expected when reusing the existing local database. Set `POSTGRES_VOLUME_NAME` only if you intentionally want another local database volume.
+
+The API container runs without Uvicorn reload in Docker because WSL can expose a package symlink loop under `frontend/node_modules`. Restart the API container after backend code changes.
 
 ### 3. Install Dependencies
 
@@ -69,8 +101,8 @@ cd ..
 
 ### 4. Run Migrations
 
-```powershell
-doppler run -- poetry run alembic upgrade head
+```bash
+doppler run --project restailor --config dev -- poetry run alembic upgrade head
 
 # Or without Doppler:
 poetry run alembic upgrade head
@@ -80,8 +112,8 @@ poetry run alembic upgrade head
 
 Terminal 1, API:
 
-```powershell
-doppler run -- poetry run uvicorn main:app --reload --port 8000
+```bash
+doppler run --project restailor --config dev -- poetry run uvicorn main:app --reload --port 8000
 
 # Or without Doppler:
 poetry run uvicorn main:app --reload --port 8000
@@ -89,8 +121,8 @@ poetry run uvicorn main:app --reload --port 8000
 
 Terminal 2, worker:
 
-```powershell
-doppler run -- poetry run arq worker.WorkerSettings
+```bash
+doppler run --project restailor --config dev -- poetry run arq worker.WorkerSettings
 
 # Or without Doppler:
 poetry run arq worker.WorkerSettings

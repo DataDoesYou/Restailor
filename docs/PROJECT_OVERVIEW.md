@@ -4,7 +4,7 @@
 
 ## Executive Summary
 
-Resume Tailor is a production-grade SaaS application that uses AI to tailor resumes to specific job descriptions, analyze candidate fit, and provide job application tracking with analytics. The platform features a modern web interface, secure authentication including WebAuthn/2FA, comprehensive API, and robust background job processing.
+Restailor is a production-grade, open-source resume tailoring and application tracking workspace. It uses user-supplied AI provider keys for fit analysis and resume tailoring, and includes secure authentication, analytics, a comprehensive API, and robust background job processing.
 
 ## Tech Stack
 
@@ -33,10 +33,10 @@ Resume Tailor is a production-grade SaaS application that uses AI to tailor resu
 - **Email:** SMTP via Brevo (formerly Sendinblue)
 
 ### AI Providers
-- OpenAI (GPT-5.3 Chat, GPT-5.4)
+- OpenAI (GPT-5.5 Instant, GPT-5.5)
 - Anthropic Claude (Opus 4.6, Sonnet 4.6)
 - Google Gemini (3.1 Pro, 3 Flash)
-- xAI Grok (Grok 4, Grok 4.1 Fast Reasoning)
+- xAI Grok (Grok 4.1 Fast Reasoning, Grok 4.3)
 - Extensible provider abstraction in `services/llm.py`
 
 ## Architecture Highlights
@@ -100,13 +100,13 @@ User Action → API → Database (applications table)
 - Active vs. archived job tracking
 - Real-time metrics with denormalized snapshots
 
-### Pricing & Credits
-- Token-based pricing with provider-specific rates
-- Configurable multipliers and model rates
-- Transparent cost estimates before job submission
+### Budget & BYOK
+- Token-based provider-cost estimates with configured model rates
+- Fixed BYOK multiplier of `1`
+- Transparent Budget estimates before job submission
 - Balance tracking with cents precision
 - Credit ledger with full audit trail
-- Admin gift/bulk/reverse operations
+- User provider-key storage and admin gift/bulk/reverse operations
 
 ## Key Modules
 
@@ -164,10 +164,11 @@ User Action → API → Database (applications table)
 - `user_trusted_devices` - Remember-me device tokens
 - `email_otps` - Email OTP codes for verification
 
-### Financial Tables
+### Budget Tables
 - `charges` - Per-job cost records with token counts
-- `credit_ledger` - All credit transactions (gifts, purchases, refunds)
+- `credit_ledger` - Budget adjustments, admin grants, legacy purchase/refund rows, and reversals
 - `user_balance` - Current balance cache
+- `user_provider_keys` - Encrypted server-synced BYOK key storage metadata
 
 ### Audit Tables
 - `email_logs` - Email delivery tracking
@@ -440,22 +441,23 @@ window.__analyzeStageIssues()
 
 **Pricing discrepancies:**
 - Verify `config/app.toml` pricing section
-- Check admin pricing overrides via API
+- Check `/budget/summary` for provider rates and recent averages
 - Review charges table for actual costs
 
-## Pricing & Credits
+## Budget & BYOK
 
-**Credit System**
-- Users purchase credits to use AI features
-- Each operation costs credits based on model and token usage
+**Budget System**
+- Users manage Budget credits as a local usage-control tool and provide their own provider API keys
+- Each operation records provider-cost-equivalent Budget usage based on model and token usage
 - Real-time balance checking before job execution
 - Insufficient balance returns 402 Payment Required
 
-**Credit Pricing** (configured in `config/app.toml` `[pricing]` section)
-- Default: $0.01 per credit
-- Multiplier: 5.0x (configurable)
-- Bulk purchase discounts available
-- Admin can grant credits via `/admin/users/{id}/credits/grant`
+**Pricing Configuration** (configured in `config/app.toml` `[pricing]` section)
+- Currency: USD
+- Multiplier: fixed at `1` for BYOK-only mode
+- Provider model rates remain visible for Budget estimates and transparency
+- Bulk purchase discounts are not used in BYOK-only mode
+- Admins can grant, bulk grant, reverse, or simulate credits through admin credit endpoints
 
 **Operation Costs**
 - Resume tailoring: Variable (depends on model and length)
@@ -469,22 +471,24 @@ window.__analyzeStageIssues()
 - `charges` table tracks exact token usage and cost per job
 - `model_count` field tracks multi-model operations
 
-**Free Trial**
-- New users receive initial credits (configurable)
-- Trial gating based on IP/ASN classification (see Security.md)
-- Residential/University: Full trial access
-- Unknown/Datacenter: May require 2FA or payment
+**BYOK Provider Keys**
+- Normal model execution requires a user-supplied provider API key
+- Server-synced keys are encrypted and exposed only as masked metadata
+- Local-only keys are handed off through short-lived runtime secrets
+- Platform provider environment keys are not used for normal user execution
 
-**Credit Management Endpoints**
-- `POST /credits/purchase` - Buy credits (Stripe integration)
-- `GET /credits/balance` - Check current balance
-- `GET /credits/history` - Transaction history
-- `POST /admin/users/{id}/credits/grant` - Admin grant (requires step-up)
+**Budget Management Endpoints**
+- `GET /budget/summary` - Budget balance, provider rates, and averages
+- `POST /budget/credits/adjust` - Self-service add/remove preset Budget credits
+- `GET /billing/summary` - Compatibility alias for Budget summary
+- `POST /billing/purchase-intent` and `POST /budget/purchase-intent` - Disabled Stripe responses
+- `GET/PUT/DELETE /users/me/provider-keys` - BYOK metadata and encrypted key storage
+- `POST /byok/runtime-secrets` - Short-lived local-only key handoff
 
-**Refund Policy**
-- Failed jobs automatically refund credits
-- Cancelled jobs refund unused credits
-- Partial completion charges proportionally
+**Legacy Trial and Stripe Surfaces**
+- Signup-grant and trial controls remain for admin/test compatibility and seeded Budget balances
+- Stripe webhook and purchase simulation paths are retained for legacy/admin testing only
+- Normal users do not buy Restailor credits or use Stripe checkout
 
 ## Repository Structure
 

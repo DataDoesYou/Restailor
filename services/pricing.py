@@ -56,8 +56,8 @@ def load_price_map(cfg: dict | None = None) -> dict:
     models_flat = dict((pr.get("models", {}) or {}))
     aliases_cfg = dict((pr.get("aliases", {}) or {}))
 
-    # Pricing is sourced from TOML config only.
-    multiplier = Decimal(str(pr.get("multiplier", "1.0")))
+    # Restailor is BYOK-only; user-facing budget charges mirror provider cost.
+    multiplier = Decimal("1")
     currency = str(pr.get("currency") or "USD").strip() or "USD"
 
     # Flatten "<Model>.input" and "<Model>.output" into nested structure

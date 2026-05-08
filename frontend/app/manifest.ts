@@ -2,9 +2,9 @@ import { MetadataRoute } from 'next'
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: 'Restailor - Tailor Your Resume to Any Job with AI',
+    name: 'Restailor - Free Open-Source AI Resume Tailoring',
     short_name: 'Restailor',
-    description: 'Instantly customize your resume for every job application using advanced AI. Match job descriptions perfectly, highlight relevant skills, and land more interviews.',
+    description: 'A free, open-source workspace for tailoring resumes, comparing fit, and tracking job applications.',
     start_url: '/',
     display: 'standalone',
     background_color: '#ffffff',

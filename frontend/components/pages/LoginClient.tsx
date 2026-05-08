@@ -1,11 +1,11 @@
 "use client";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import dynamic from "next/dynamic";
 import api, { ApiError } from "@/lib/api";
 import { getClientId, b64urlToBuf, bufToB64url } from "@/lib/client";
 import { setEphemeralAccessToken, setAccessToken, clearAccessToken, clearEphemeralAccessToken } from "@/lib/auth";
 import { useRouter, useSearchParams } from "next/navigation";
 import { logger } from "@/lib/logger";
+import dynamic from "next/dynamic";
 
 // Minimal outline icons (monochrome) for Show/Hide password
 function EyeIcon({ className = "" }: { className?: string }) {
@@ -47,6 +47,7 @@ export default function LoginClient({ stackedButtons = false }: { stackedButtons
 	// Unverified gating after successful login but 403 on /users/me
 	const [unverifiedMode, setUnverifiedMode] = useState<{ email: string; cooldownUntil?: number } | null>(null);
 	const [resendBusy, setResendBusy] = useState(false);
+	const [showCaptcha, setShowCaptcha] = useState(false);
 
 	// Broadcast auth changes so other components can refresh their session state
 	const emitAuth = useCallback((state: "logged-in" | "logged-out") => {
@@ -138,6 +139,7 @@ export default function LoginClient({ stackedButtons = false }: { stackedButtons
 		// Check Turnstile completion if configured
 		logger.debug("[doLogin] siteKey:", siteKey, "globalTsState:", globalTsState, "tsState:", tsState);
 		if (siteKey && globalTsState !== "success") {
+			setShowCaptcha(true);
 			setAlert({ kind: "warning", text: "Please complete the captcha verification before logging in." });
 			return;
 		}
@@ -209,6 +211,7 @@ export default function LoginClient({ stackedButtons = false }: { stackedButtons
 		}
 		// If captcha is required and not yet completed, block submission
 		if (siteKey && globalTsState !== "success") {
+			setShowCaptcha(true);
 			setAlert({ kind: "warning", text: "Please complete the captcha verification before registering." });
 			return;
 		}
@@ -548,18 +551,16 @@ export default function LoginClient({ stackedButtons = false }: { stackedButtons
 							{showPw ? <EyeOffIcon className="h-4 w-4" /> : <EyeIcon className="h-4 w-4" />}
 						</button>
 					</div>
-					<div className="my-2">
-						<div className="min-h-[140px] mb-4">
-							{siteKey ? (
+					{siteKey && showCaptcha ? (
+						<div className="my-2">
+							<div className="h-[147px] mb-4">
 								<TurnstileWidget siteKey={siteKey} onState={handleTsStateChange} />
-							) : (
-								<div aria-hidden="true" className="h-[84px]" />
+							</div>
+							{tsState === "error" && (
+								<div className="mt-2 rounded border border-yellow-600 bg-yellow-900/30 p-3 text-yellow-300 text-sm">Captcha unavailable. Check ad-blockers and reload.</div>
 							)}
 						</div>
-						{tsState === "error" && (
-							<div className="mt-2 rounded border border-yellow-600 bg-yellow-900/30 p-3 text-yellow-300 text-sm">Captcha unavailable. Check ad‑blockers and reload.</div>
-						)}
-					</div>
+					) : null}
 					{stackedButtons ? (
 						<div className="space-y-2 mt-4">
 							<button type="submit" disabled={busy} className="w-full rounded bg-slate-700 hover:bg-slate-600 active:bg-slate-500 transition-colors px-3 py-2.5 disabled:opacity-50">Login</button>
@@ -626,4 +627,3 @@ export default function LoginClient({ stackedButtons = false }: { stackedButtons
 		</div>
 	);
 }
-
