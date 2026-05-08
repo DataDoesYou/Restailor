@@ -13,6 +13,7 @@ enable_reload_detection = false  # Show double-reload diagnostic banner on front
 # Root limits table (add user_active_job_cap override; child tables follow below)
 [limits]
 user_active_job_cap = 10
+active_job_stale_after_minutes = 360
 
 [limits.text]
 char_cap_resume = 120000
@@ -445,7 +446,7 @@ first_byte_ms = 60000
 stream_stall_abort_ms = 45000
 
 [pricing]
-multiplier = 2.0
+multiplier = 1
 currency = "USD"
 
 [pricing.models]
@@ -493,7 +494,7 @@ currency = "USD"
 
 # --- Stripe (optional; disabled by default) ---
 [stripe]
-enabled = true
+enabled = false
 # Webhook secret should be provided via env or keyring in production; default empty
 webhook_secret = ""
 

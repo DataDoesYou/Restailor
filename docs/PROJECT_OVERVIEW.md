@@ -446,15 +446,15 @@ window.__analyzeStageIssues()
 ## Pricing & Credits
 
 **Credit System**
-- Users purchase credits to use AI features
-- Each operation costs credits based on model and token usage
+- Users manage Budget credits as a local usage-control tool and provide their own provider API keys
+- Each operation records provider-cost-equivalent Budget usage based on model and token usage
 - Real-time balance checking before job execution
 - Insufficient balance returns 402 Payment Required
 
 **Credit Pricing** (configured in `config/app.toml` `[pricing]` section)
 - Default: $0.01 per credit
 - Multiplier: 5.0x (configurable)
-- Bulk purchase discounts available
+- Bulk purchase discounts are not used in BYOK-only mode
 - Admin can grant credits via `/admin/users/{id}/credits/grant`
 
 **Operation Costs**

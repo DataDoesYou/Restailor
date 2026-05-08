@@ -45,7 +45,7 @@ Optional integrations include:
 
 - OpenAI, Anthropic, Gemini, and Grok for model execution
 - SMTP for verification, login, and notification emails
-- Stripe for credit purchases and billing flows
+- Stripe is inert for normal user flows; Budget tracks BYOK provider-cost-equivalent usage
 - WebAuthn-compatible authenticators for passkeys
 - A secret manager such as Doppler for production secret injection
 
@@ -111,7 +111,7 @@ Optional integrations include:
 
 - OpenAI, Anthropic, Gemini, and Grok for model execution
 - SMTP for verification, login, and notification emails
-- Stripe for credit purchases and billing flows
+- Stripe is inert for normal user flows; Budget tracks BYOK provider-cost-equivalent usage
 - WebAuthn-compatible authenticators for passkeys
 - A secret manager such as Doppler for production secret injection
 

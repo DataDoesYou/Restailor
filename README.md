@@ -32,7 +32,7 @@ See `docs/ARCHITECTURE.md` for the detailed component view.
 - Frontend: Next.js 16, React 19, Tailwind CSS
 - Data: PostgreSQL 16, Redis 7
 - Testing: Pytest, Playwright, Vitest
-- Integrations: OpenAI, Anthropic, Gemini, Grok, SMTP, Stripe, WebAuthn
+- Integrations: OpenAI, Anthropic, Gemini, Grok, SMTP, WebAuthn; Stripe is inert for normal user flows
 
 ## Quick Start
 
@@ -85,7 +85,7 @@ docker compose -f docker/docker-compose.dev.yml up --build
 
 This starts Postgres, Redis, the API, the worker, and the frontend using the root `.env` file.
 
-### Stripe Webhooks in Docker Dev
+### Stripe Webhooks (Deprecated for Normal User Flows)
 
 This dev stack uses `cloudflared` to expose the local API (`http://api:8000`) through your Cloudflare tunnel.
 Point your Stripe webhook endpoint to that tunnel URL and keep `STRIPE_WEBHOOK_SECRET` in env/Doppler aligned with the Stripe endpoint secret.
@@ -96,7 +96,7 @@ To verify tunnel logs:
 docker compose -f docker/docker-compose.dev.yml logs -f cloudflared
 ```
 
-Without webhook forwarding, Checkout can succeed but credits will not be applied.
+Without webhook forwarding, Stripe checkout is disabled for normal user flows.
 
 Doppler is optional. If you use Doppler, you can run the same command with injected secrets:
 
@@ -120,7 +120,7 @@ The canonical template is `.env.example` at the repo root. It includes:
 
 - Core auth and encryption keys
 - Database and Redis settings
-- Optional email, captcha, analytics, and Stripe settings
+- Optional email, captcha, analytics, and inert Stripe settings
 - Frontend deployment metadata such as `NEXT_PUBLIC_SITE_URL`
 
 ## Project Structure

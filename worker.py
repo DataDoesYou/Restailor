@@ -250,6 +250,7 @@ async def tailor_resume(
     job_id: str,
     provider: Optional[str] = None,
     model_id: Optional[str] = None,
+    runtime_secret_id: Optional[str] = None,
 ) -> str:
     """Tailor a resume (single model) with streaming.
 
@@ -264,6 +265,7 @@ async def tailor_resume(
     from services.llm import stream_model, abort_job, StallBeforeFirstByte, get_usage_for_job
     from services.pricing import load_price_map
     from services.postprocess import record_charge_for_job
+    from services.byok import resolve_byok_key
     from restailor.app_config import CONFIG as _CFG
     from config_loader import build_gen_params
     from datetime import datetime
@@ -284,6 +286,23 @@ async def tailor_resume(
             job.status = "processing"
             job.job_flow = job.job_flow or "tailor"
             db.commit()
+        if not job or not getattr(job, "user_id", None):
+            return "MISSING_BYOK_USER"
+        try:
+            byok = await resolve_byok_key(
+                db,
+                ctx.get("redis") if isinstance(ctx, dict) else None,
+                user_id=int(job.user_id),
+                provider=str(provider or ""),
+                runtime_secret_id=runtime_secret_id,
+                intended_use="model_run",
+            )
+            api_key = byok.api_key
+        except Exception:
+            if job:
+                job.status = "failed"
+                db.commit()
+            return "MISSING_BYOK_KEY"
 
         # Decrypt inputs
         pii_key = get_pii_key()
@@ -474,6 +493,7 @@ async def tailor_resume(
                 stop_markers=[end_marker],
                 job_id=job_id,
                 external_cancel=ext_cancel,
+                api_key=api_key,
             ):
                 if (not _ignore_cancel) and ext_cancel is not None and await ext_cancel():
                     try:
@@ -762,6 +782,7 @@ async def check_job_fit(
     job_id: str,
     provider: Optional[str],
     model_id: Optional[str],
+    runtime_secret_id: Optional[str] = None,
 ) -> str:
     from sqlalchemy.orm import Session
     from sqlalchemy import select, func, cast, Text as _Text, bindparam as _bind
@@ -770,6 +791,7 @@ async def check_job_fit(
     from restailor.app_config import CONFIG as _CFG
     from services.pricing import load_price_map
     from services.postprocess import record_charge_for_job
+    from services.byok import resolve_byok_key
 
     db: Session = SessionLocal()
     start = time.perf_counter()
@@ -901,6 +923,23 @@ async def check_job_fit(
                 except Exception:
                     db.rollback()
                 return "CANCELED"
+        if not job or not getattr(job, "user_id", None):
+            return "MISSING_BYOK_USER"
+        try:
+            byok = await resolve_byok_key(
+                db,
+                ctx.get("redis") if isinstance(ctx, dict) else None,
+                user_id=int(job.user_id),
+                provider=str(provider or ""),
+                runtime_secret_id=runtime_secret_id,
+                intended_use="model_run",
+            )
+            api_key = byok.api_key
+        except Exception:
+            if job:
+                job.status = "failed"
+                db.commit()
+            return "MISSING_BYOK_KEY"
         # If canceled before starting the provider call, honor it quickly
         try:
             db.refresh(job)
@@ -982,6 +1021,7 @@ async def check_job_fit(
                 stop_markers=[end_marker],
                 job_id=job_id,
                 external_cancel=(None if _ignore_cancel else external_cancel),
+                api_key=api_key,
             ):
                 if (not _ignore_cancel) and await external_cancel():
                     try:
@@ -1243,6 +1283,7 @@ async def judge_only(
     job_id: str,
     judge_provider: Optional[str],
     judge_model_id: Optional[str],
+    runtime_secret_id: Optional[str] = None,
 ) -> str:
     from sqlalchemy.orm import Session
     from sqlalchemy import select, func, cast, Text as _Text, bindparam as _bind
@@ -1250,6 +1291,7 @@ async def judge_only(
     from restailor.models import Job, JobOutput
     from services.pricing import load_price_map
     from services.postprocess import record_charge_for_job
+    from services.byok import resolve_byok_key
 
     db: Session = SessionLocal()
     start = time.perf_counter()
@@ -1313,26 +1355,23 @@ async def judge_only(
                 db.commit()
             except Exception:
                 db.rollback()
-        def _get_api_key(p: str) -> Optional[str]:
-            secret_names = {
-                "openai": "OPENAI_API_KEY",
-                "anthropic": "CLAUDE_API_KEY",
-                "gemini": "GEMINI_API_KEY",
-                "xai": "GROK_API_KEY",
-            }
-            name = secret_names.get(p)
-            if not name:
-                return None
-            key: Optional[str] = None
-            try:
-                import keyring  # type: ignore
-                key = keyring.get_password("restailor", name)  # type: ignore
-            except Exception:
-                key = None
-            if not key:
-                import os
-                key = os.getenv(name)
-            return key
+        if not job or not getattr(job, "user_id", None):
+            return "MISSING_BYOK_USER"
+        try:
+            byok = await resolve_byok_key(
+                db,
+                ctx.get("redis") if isinstance(ctx, dict) else None,
+                user_id=int(job.user_id),
+                provider=str(judge_provider or ""),
+                runtime_secret_id=runtime_secret_id,
+                intended_use="model_run",
+            )
+            api_key = byok.api_key
+        except Exception:
+            if job:
+                job.status = "failed"
+                db.commit()
+            return "MISSING_BYOK_KEY"
 
         # Streaming judge using the same loop as tailor_resume
         from restailor.app_config import CONFIG as _CFG
@@ -1490,6 +1529,7 @@ async def judge_only(
                 stop_markers=[end_marker],
                 job_id=job_id,
                 external_cancel=(None if _ignore_cancel_env else external_cancel),
+                api_key=api_key,
             ):
                 if (not _ignore_cancel_env) and await external_cancel():
                     try:
@@ -1744,6 +1784,7 @@ async def judge_ranking(
     candidates: dict[str, str],
     judge_provider: Optional[str],
     judge_model_id: Optional[str],
+    runtime_secret_id: Optional[str] = None,
 ) -> str:
     """Rank multiple tailored resumes using one judge LLM.
 
@@ -1762,6 +1803,7 @@ async def judge_ranking(
     from restailor.models import Job, JobOutput
     from services.pricing import load_price_map
     from services.postprocess import record_charge_for_job
+    from services.byok import resolve_byok_key
 
     db: Session = SessionLocal()
     start = time.perf_counter()
@@ -1804,6 +1846,23 @@ async def judge_ranking(
                 db.commit()
             except Exception:
                 db.rollback()
+        if not job or not getattr(job, "user_id", None):
+            return "MISSING_BYOK_USER"
+        try:
+            byok = await resolve_byok_key(
+                db,
+                ctx.get("redis") if isinstance(ctx, dict) else None,
+                user_id=int(job.user_id),
+                provider=str(judge_provider or ""),
+                runtime_secret_id=runtime_secret_id,
+                intended_use="model_run",
+            )
+            api_key = byok.api_key
+        except Exception:
+            if job:
+                job.status = "failed"
+                db.commit()
+            return "MISSING_BYOK_KEY"
 
         # Candidate count computed lazily after reconstruction; define helper.
         def _cand_count() -> int:
@@ -2164,6 +2223,7 @@ async def judge_ranking(
                 stop_markers=["<<END>>"],
                 job_id=job_id,
                 external_cancel=(None if _ignore_cancel else external_cancel),
+                api_key=api_key,
             ):
                 if (not _ignore_cancel) and await external_cancel():
                     try:

@@ -213,7 +213,7 @@ export default function SidebarClient({ initialMe = null, initialBalance = null 
                 {featureAnalytics && (
                   <Link href="/dashboard/analytics" className={navLinkClass("/dashboard/analytics")} aria-current={isActive("/dashboard/analytics") ? "page" : undefined}>Analytics</Link>
                 )}
-                <Link href="/billing" className={navLinkClass("/billing")} aria-current={isActive("/billing") ? "page" : undefined}>Billing</Link>
+                <Link href="/budget" className={navLinkClass("/budget")} aria-current={isActive("/budget") ? "page" : undefined}>Budget</Link>
                 <Link href="/security" className={navLinkClass("/security")} aria-current={isActive("/security") ? "page" : undefined}>Security</Link>
                 <Link href="/settings" className={navLinkClass("/settings")} aria-current={isActive("/settings") ? "page" : undefined}>Settings</Link>
                 <Link href="/help" className={navLinkClass("/help")} aria-current={isActive("/help") ? "page" : undefined}>Help</Link>

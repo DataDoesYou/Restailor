@@ -1,11 +1,12 @@
 // Lightweight runtime-gated debug logger for Resume Tailor flows
-// Gating: URL ?rtDebug=1, localStorage.rtDebug === '1', or window.__rtDebug truthy
+// Gating: URL ?rtDebug=1 or ?debug=true.
 
 export function isRtDebug(): boolean {
   try {
     if (typeof window === 'undefined') return false;
     const sp = new URLSearchParams(window.location.search);
     if (sp.get('rtDebug') === '1') return true;
+    if (sp.get('debug') === 'true' || sp.get('debug') === '1') return true;
     // Disabled: localStorage check (too persistent, prefer explicit URL flag)
     // try { if (localStorage.getItem('rtDebug') === '1') return true; } catch {}
     // @ts-ignore

@@ -669,10 +669,10 @@ export default function AdminClient({ initialMe }: { initialMe?: Me }) {
 
 
 	if (loading) return null;
-	if (!isAdmin) return <div className="mx-auto max-w-xl text-yellow-300 px-4 md:px-0">You need to be logged in as an admin to use this page.</div>;
+	if (!isAdmin) return <div className="mx-auto max-w-4xl text-yellow-300 px-4 md:px-0">You need to be logged in as an admin to use this page.</div>;
 
 	return (
-		<div className="mx-auto max-w-3xl space-y-4 px-4 md:px-0">
+		<div className="mx-auto max-w-4xl space-y-4 px-4 md:px-0">
 			<h1 className="text-2xl font-semibold">Admin</h1>
 
 			{alert && (
