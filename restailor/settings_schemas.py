@@ -332,8 +332,7 @@ def get_model_upgrade_map() -> dict[str, str]:
         "claude-opus-4-6": "claude-opus-4-7",
         "gemini-3-pro-preview": "gemini-3.1-pro-preview",
         "gemini-2.5-flash": "gemini-3-flash-preview",
-        "grok-4-1-fast-reasoning": "grok-4.3",
-        "grok-4-fast": "grok-4.3",
+        "grok-4-fast": "grok-4-1-fast-reasoning",
         "grok-4-0709": "grok-4.3",
         "grok-4": "grok-4.3",
     }

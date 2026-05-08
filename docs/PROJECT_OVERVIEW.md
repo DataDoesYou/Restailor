@@ -36,7 +36,7 @@ Resume Tailor is a production-grade SaaS application that uses AI to tailor resu
 - OpenAI (GPT-5.5 Instant, GPT-5.5)
 - Anthropic Claude (Opus 4.6, Sonnet 4.6)
 - Google Gemini (3.1 Pro, 3 Flash)
-- xAI Grok (Grok 4.3)
+- xAI Grok (Grok 4.1 Fast Reasoning, Grok 4.3)
 - Extensible provider abstraction in `services/llm.py`
 
 ## Architecture Highlights

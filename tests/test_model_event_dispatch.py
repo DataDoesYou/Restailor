@@ -51,14 +51,14 @@ def test_event_detail_structure():
     # This is what SidebarModels dispatches
     correct_event_detail = {
         'fitModelLabel': 'Claude Sonnet 4.6 — Anthropic (best agents)',
-        'tailorModelLabel': 'Grok 4.3 — xAI (latest)',
+        'tailorModelLabel': 'Grok 4.1 Fast Reasoning — xAI (fast/cheap)',
         'judgeLabel': 'GPT-5.5 Instant — OpenAI'
     }
     
     # This was the bug: dispatching aliases instead of full labels
     incorrect_event_detail = {
         'fitModelLabel': 'Claude Sonnet 4.6',  # Just alias, missing provider and description
-        'tailorModelLabel': 'Grok 4.3',
+        'tailorModelLabel': 'Grok 4.1 Fast Reasoning',
         'judgeLabel': 'GPT-5.5 Instant'
     }
     
@@ -147,7 +147,7 @@ def test_display_options_lookup():
     DISPLAY_OPTIONS = [
         {'alias': 'Claude Sonnet 4.6', 'label': 'Claude Sonnet 4.6 — Anthropic (best agents)'},
         {'alias': 'GPT-5.5 Instant', 'label': 'GPT-5.5 Instant — OpenAI (instant)'},
-        {'alias': 'Grok 4.3', 'label': 'Grok 4.3 — xAI (latest)'}
+        {'alias': 'Grok 4.1 Fast Reasoning', 'label': 'Grok 4.1 Fast Reasoning — xAI (fast/cheap)'}
     ]
     
     # Test correct lookup (with full label)

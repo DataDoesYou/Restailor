@@ -312,7 +312,8 @@ def test_model_upgrade_map_contains_known_deprecations():
     assert isinstance(upgrade_map, dict)
     assert upgrade_map["gpt-5.4"] == "gpt-5.5"
     assert upgrade_map["claude-opus-4-6"] == "claude-opus-4-7"
-    assert upgrade_map["grok-4-1-fast-reasoning"] == "grok-4.3"
+    assert upgrade_map["grok-4-fast"] == "grok-4-1-fast-reasoning"
+    assert "grok-4-1-fast-reasoning" not in upgrade_map
 
 
 
@@ -362,7 +363,7 @@ def test_apply_model_upgrades_with_mapping(monkeypatch):
     
     # Test valid model is NOT upgraded
     if allowed:
-        valid_model = list(allowed)[0]
+        valid_model = next(m for m in allowed if m != "gpt-4.1")
         assert apply_model_upgrades(valid_model) == valid_model
 def test_resolve_effective_settings_applies_upgrades(monkeypatch):
     """Test that ModelSettings validator automatically applies upgrades during construction."""

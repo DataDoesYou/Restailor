@@ -17,7 +17,8 @@ export const MODEL_OPTIONS: ModelOption[] = [
   { alias: "Gemini 3.1 Pro", provider: "gemini", provider_display: "Google", model_id: "gemini-3.1-pro-preview", description: "best quality", legacy_aliases: ["Gemini 3 Pro"], legacy_model_ids: ["gemini-3-pro-preview"] },
   { alias: "GPT-5.5 Instant", provider: "openai", provider_display: "OpenAI", model_id: "chat-latest", description: "instant", legacy_aliases: ["GPT-5.4 Mini", "GPT-5.3 Chat", "GPT-5.2 Instant"], legacy_model_ids: ["gpt-5.4-mini", "gpt-5.3-chat-latest", "gpt-5.1-instant", "gpt-5.2-chat-latest"] },
   { alias: "GPT-5.5", provider: "openai", provider_display: "OpenAI", model_id: "gpt-5.5", description: "deep reasoning", legacy_aliases: ["GPT-5.4", "GPT-5.2 Thinking"], legacy_model_ids: ["gpt-5.4", "gpt-5.1-thinking", "gpt-5.2"] },
-  { alias: "Grok 4.3", provider: "xai", provider_display: "xAI", model_id: "grok-4.3", description: "latest", legacy_aliases: ["Grok 4.1 Fast Reasoning", "Grok 4 Fast", "Grok 4"], legacy_model_ids: ["grok-4-1-fast-reasoning", "grok-4-fast", "grok-4-0709", "grok-4"] },
+  { alias: "Grok 4.1 Fast Reasoning", provider: "xai", provider_display: "xAI", model_id: "grok-4-1-fast-reasoning", description: "fast/cheap", legacy_aliases: ["Grok 4 Fast"], legacy_model_ids: ["grok-4-fast"] },
+  { alias: "Grok 4.3", provider: "xai", provider_display: "xAI", model_id: "grok-4.3", description: "latest", legacy_aliases: ["Grok 4"], legacy_model_ids: ["grok-4-0709", "grok-4"] },
 ];
 
 // Backwards compatibility: replicate legacy DISPLAY_OPTIONS / JUDGE_OPTIONS shape so existing components keep working.

@@ -215,7 +215,7 @@ export default function TestRadioPage() {
       setTrialModels([
         MODEL_OPTIONS[0].model_id, // Claude Sonnet 4.6
         MODEL_OPTIONS[2].model_id, // Gemini 3 Flash
-        MODEL_OPTIONS[6].model_id, // Grok 4.3
+        MODEL_OPTIONS[6].model_id, // Grok 4.1 Fast Reasoning
       ]);
     } else {
       // Remove restrictions

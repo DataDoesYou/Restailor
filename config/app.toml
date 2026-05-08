@@ -208,6 +208,10 @@ enabled = true
 model_tailor = "grok-4.3"
 model_fit    = "grok-4.3"
 model_judge  = "grok-4.3"
+# Additional models for allowlist
+model_tailor_alt = "grok-4-1-fast-reasoning"
+model_fit_alt = "grok-4-1-fast-reasoning"
+model_judge_alt = "grok-4-1-fast-reasoning"
 
 [runs]
 registry_ttl_sec = 86400
@@ -500,7 +504,8 @@ currency = "USD"
 "GPT-5.4 Mini" = "chat-latest"
 "GPT-5.3 Chat" = "chat-latest"
 "Grok 4.3" = "grok-4.3"
-"Grok 4.1 Fast Reasoning" = "grok-4.3"
+"Grok 4.1 Fast Reasoning" = "grok-4-1-fast-reasoning"
+"Grok 4 Fast" = "grok-4-1-fast-reasoning"
 "Grok 4" = "grok-4.3"
 
 # --- Stripe (optional; disabled by default) ---
