@@ -61,9 +61,8 @@ Edit `.env` and set, at minimum:
 - `PII_ENCRYPTION_KEY`
 - `TOTP_FERNET_KEY`
 - `SECURITY_REMEMBER_SIGNER_SECRET`
-- One provider key such as `OPENAI_API_KEY`
 
-For local-only development you can keep `STRICT_SECRETS=0` and leave optional integrations blank.
+Normal model runs are BYOK-only. Users add provider API keys in Settings; platform provider environment keys are optional and should be reserved for explicit admin or test utilities. For local-only development you can keep `STRICT_SECRETS=0` and leave optional integrations blank.
 
 ### Run Locally
 
@@ -85,18 +84,19 @@ docker compose -f docker/docker-compose.dev.yml up --build
 
 This starts Postgres, Redis, the API, the worker, and the frontend using the root `.env` file.
 
-### Stripe Webhooks (Deprecated for Normal User Flows)
+### Stripe Webhooks (Legacy/Admin Testing Only)
 
-This dev stack uses `cloudflared` to expose the local API (`http://api:8000`) through your Cloudflare tunnel.
-Point your Stripe webhook endpoint to that tunnel URL and keep `STRIPE_WEBHOOK_SECRET` in env/Doppler aligned with the Stripe endpoint secret.
+Stripe checkout is disabled for normal user flows. The retained webhook and Stripe settings exist only for legacy/admin testing paths.
 
-To verify tunnel logs:
+If you deliberately test those paths with the Docker dev stack, `cloudflared` can expose the local API (`http://api:8000`) through your Cloudflare tunnel. Point your Stripe webhook endpoint to that tunnel URL and keep `STRIPE_WEBHOOK_SECRET` in env/Doppler aligned with the Stripe endpoint secret.
+
+To verify tunnel logs during that testing:
 
 ```bash
 docker compose -f docker/docker-compose.dev.yml logs -f cloudflared
 ```
 
-Without webhook forwarding, Stripe checkout is disabled for normal user flows.
+Keep `STRIPE_ENABLED=false` for ordinary local and production operation.
 
 Doppler is optional. If you use Doppler, you can run the same command with injected secrets:
 

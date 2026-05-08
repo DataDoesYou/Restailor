@@ -677,18 +677,16 @@ redis-cli FLUSHDB
 
 ---
 
-## Appendix A: Stripe Payment Setup
+## Appendix A: Stripe Legacy Notes
 
 Stripe is deprecated and inert for normal user flows. Restailor now runs in free BYOK-only mode: users manage Budget credits locally and provide their own provider API keys in Settings. Keep `STRIPE_ENABLED=false` unless you are deliberately testing an admin-only legacy utility.
 
-### Production Checklist
+### If You Deliberately Test Legacy Stripe Utilities
 
-- [ ] Switch to **live** Stripe keys (sk_live_, pk_live_)
-- [ ] Create production webhook endpoint
-- [ ] Update `STRIPE_WEBHOOK_SECRET` with production value
-- [ ] Verify webhook endpoint is enabled in Stripe Dashboard
-- [ ] Test end-to-end payment flow
-- [ ] Monitor webhook logs for errors
+- Use test-mode Stripe keys only.
+- Point a temporary webhook endpoint at a non-production API.
+- Set `STRIPE_WEBHOOK_SECRET` only for that test environment.
+- Keep the normal hosted app and self-hosted production deployments on Budget/BYOK, not checkout.
 
 **See archived `docs/archive/setup/STRIPE_SETUP.md` for detailed troubleshooting.**
 
