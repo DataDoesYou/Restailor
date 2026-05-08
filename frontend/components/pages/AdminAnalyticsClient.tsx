@@ -21,7 +21,7 @@ function getModelDisplayName(modelId: string): string {
     'gemini-3-flash-preview': 'Gemini 3 Flash',
     'gemini-3.1-pro-preview': 'Gemini 3.1 Pro',
     'gpt-5.5': 'GPT-5.5',
-    'gpt-5.4-mini': 'GPT-5.4 Mini',
+    'chat-latest': 'GPT-5.5 Instant',
     'gpt-5.4': 'GPT-5.4',
     'gpt-5.3-chat-latest': 'GPT-5.3 Chat',
     'grok-4.3': 'Grok 4.3',

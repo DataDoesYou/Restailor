@@ -1053,7 +1053,7 @@ export default function ResumeTailorClient({ initialLoggedIn, initialAuthVerifie
 		"Gemini 3.1 Pro": "G3.1P",
 		"GPT-4.1": "G4.1",
 		"GPT-5": "G5",
-		"GPT-5.4 Mini": "G5.4M",
+		"GPT-5.5 Instant": "G5.5I",
 		"GPT-5.5": "G5.5",
 		"Grok 4.1 Fast Reasoning": "Gr4.1FR",
 		"Grok 4.3": "Gr4.3",

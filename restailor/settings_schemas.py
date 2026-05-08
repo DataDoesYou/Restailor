@@ -320,11 +320,12 @@ def get_model_upgrade_map() -> dict[str, str]:
     # Define explicit upgrade mappings for known deprecations
     # This section can be used for custom upgrade paths (e.g., GPT-4 -> GPT-5 Instant instead of Thinking)
     explicit_upgrades = {
-        "gpt-5.1-instant": "gpt-5.4-mini",
+        "gpt-5.1-instant": "chat-latest",
         "gpt-5.1-thinking": "gpt-5.5",
-        "gpt-5.2-chat-latest": "gpt-5.4-mini",
+        "gpt-5.2-chat-latest": "chat-latest",
         "gpt-5.2": "gpt-5.5",
-        "gpt-5.3-chat-latest": "gpt-5.4-mini",
+        "gpt-5.4-mini": "chat-latest",
+        "gpt-5.3-chat-latest": "chat-latest",
         "gpt-5.4": "gpt-5.5",
         "claude-sonnet-4-5-20250929": "claude-sonnet-4-6",
         "claude-opus-4-5-20251101": "claude-opus-4-7",

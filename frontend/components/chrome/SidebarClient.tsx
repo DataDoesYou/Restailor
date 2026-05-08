@@ -183,7 +183,7 @@ export default function SidebarClient({ initialMe = null, initialBalance = null 
   }, []);
 
   // Listen for model selection updates from SidebarModels
-  // NOTE: These aliases come in alias format (e.g. "GPT-5.4 Mini"), not full label format
+  // NOTE: These aliases come in alias format (e.g. "GPT-5.5 Instant"), not full label format
   // They're only used for the legacy UI state, not for dispatching events
   useEffect(() => {
     const onMultiModels = (e: Event) => {
