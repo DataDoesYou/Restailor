@@ -13,7 +13,7 @@ def _auth_client():
     email = f"budget_byok_{uuid.uuid4().hex}@example.com"
     signup_and_mark_test(client, email, "TestPassword123!")
     token = login(client, email, "TestPassword123!")
-    return client, email, {"Authorization": f"Bearer {token}"}
+    return client, email, {"Authorization": f"Bearer {token}", "Origin": "http://localhost:3000"}
 
 
 def test_budget_adjust_add_and_remove_clamps_and_writes_ledger():
