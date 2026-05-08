@@ -2478,6 +2478,7 @@ def get_url_limits():
 # --- Frontend config exposure: expose safe toggles incl. rt_debug_ui ---
 class FrontendConfig(BaseModel):
     rt_debug_ui: bool = False
+    homepage_debug_logged_out: bool = False
 
 
 @app.get("/config/frontend", response_model=FrontendConfig, tags=["config"])
@@ -2485,9 +2486,11 @@ def get_frontend_config() -> FrontendConfig:
     try:
         diag = (CONFIG.get("diagnostics", {}) or {})
         flag = bool(diag.get("rt_debug_ui", False))
+        homepage_logged_out = bool(diag.get("homepage_debug_logged_out", False))
     except Exception:
         flag = False
-    return FrontendConfig(rt_debug_ui=flag)
+        homepage_logged_out = False
+    return FrontendConfig(rt_debug_ui=flag, homepage_debug_logged_out=homepage_logged_out)
 app.include_router(twofa_router)
 app.include_router(auth_email_otp_router)
 

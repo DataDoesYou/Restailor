@@ -86,8 +86,14 @@ export default async function RootLayout({
 		}
 	} catch {}
 	return (
-		<html lang="en" suppressHydrationWarning>
+		<html lang="en" suppressHydrationWarning style={{ backgroundColor: "#0b0e14", color: "#e2e8f0" }}>
 			<head>
+				<script
+					suppressHydrationWarning
+					dangerouslySetInnerHTML={{
+						__html: `(()=>{try{if(typeof window==='undefined')return;window.__rtEarlyReload={iso:new Date().toISOString(),dateNow:Date.now(),timeOrigin:performance.timeOrigin,now:performance.now(),readyState:document.readyState,pathname:location.pathname,search:location.search,nav:(()=>{try{var n=performance.getEntriesByType('navigation')[0];return n?{type:n.type,requestStart:Math.round(n.requestStart),responseStart:Math.round(n.responseStart),responseEnd:Math.round(n.responseEnd)}:null}catch{return null}})()};}catch{}})();`,
+					}}
+				/>
 				<meta name="viewport" content="width=device-width, initial-scale=1" />
 				{googleAnalyticsId ? (
 					<>
@@ -131,7 +137,7 @@ export default async function RootLayout({
 					}}
 				/>
 			</head>
-			<body className="min-h-screen bg-[#0b0e14] text-slate-200 md:overflow-hidden m-0 p-0">
+			<body className="min-h-screen bg-[#0b0e14] text-slate-200 md:overflow-hidden m-0 p-0" style={{ backgroundColor: "#0b0e14", color: "#e2e8f0" }}>
 				{/* Inject server-provided frontend config (rt_debug_ui) so client can enable HUD/logs without URL/localStorage */}
 				<script
 					suppressHydrationWarning
