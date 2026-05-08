@@ -222,6 +222,9 @@ allow_ips = ["127.0.0.1"]
 # UI debug HUD and structured logging gate. When true, logging/HUD can be enabled
 # without query params by the frontend. You can still force it via ?rtDebug=1.
 rt_debug_ui = true
+# Allow the homepage ?debug=true load overlay before login. Keep this explicit because
+# the overlay is useful for diagnosing logged-out first paint/hydration behavior.
+homepage_debug_logged_out = true
 
 # Performance/observability knobs
 [perf]

@@ -94,31 +94,26 @@ export default function MobileDrawer({ isOpen, onClose, children }: MobileDrawer
     };
   }, [isOpen]);
 
-  // Don't render portal during SSR
-  if (!isMounted) return null;
+  // Do not mount a second sidebar while the drawer is closed. The hidden portal
+  // duplicated login/model controls after hydration and caused logged-out reload
+  // flicker in the desktop layout.
+  if (!isMounted || !isOpen) return null;
 
-  // Always render to keep Turnstile widget mounted, but hide when closed
   return createPortal(
     <>
-      {/* Backdrop - only visible when open */}
-      {isOpen && (
-        <div
-          className="fixed inset-0 bg-black/50 z-40 md:hidden"
-          onClick={onClose}
-          aria-hidden="true"
-        />
-      )}
+      <div
+        className="fixed inset-0 bg-black/50 z-40 md:hidden"
+        onClick={onClose}
+        aria-hidden="true"
+      />
       
-      {/* Drawer - always mounted but positioned off-screen when closed */}
+      {/* Drawer */}
       <div
         ref={drawerRef}
         role="dialog"
         aria-modal="true"
         aria-label="Navigation menu"
-        aria-hidden={!isOpen}
-        className={`fixed inset-y-0 left-0 w-[240px] max-w-[85vw] bg-[#0b0e14] z-50 md:hidden shadow-xl flex flex-col transition-transform duration-300 ${
-          isOpen ? 'translate-x-0' : '-translate-x-full'
-        }`}
+        className="fixed inset-y-0 left-0 w-[240px] max-w-[85vw] bg-[#0b0e14] z-50 md:hidden shadow-xl flex flex-col transition-transform duration-300 translate-x-0"
       >
         {/* Drawer content - let child handle scrolling */}
         <div className="flex-1 min-h-0">

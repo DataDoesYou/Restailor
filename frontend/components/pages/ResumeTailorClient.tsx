@@ -1987,8 +1987,11 @@ export default function ResumeTailorClient({ initialLoggedIn, initialAuthVerifie
 		console.log('[Tooltip Debug] Pricing fetch effect triggered, isLoggedIn:', isLoggedIn, 'authPending:', authPending);
 		if (authPending) return; // wait for auth to actually be confirmed by API
 		if (isLoggedIn == null) return; // wait until auth probe finishes
-		if (isLoggedIn === false) { // logged out: clear any stale private stats
-			if (statsMd) { setStatsMd(""); }
+		if (isLoggedIn === false) {
+			// Logged-out demo snapshots are public SSR data; keep their timing stats
+			// so the result panel does not flicker after hydration.
+			const hasPublicSnapshotStats = initialSnapshotLoaded && typeof initialStatsMd === "string" && initialStatsMd.trim().length > 0;
+			if (statsMd && !hasPublicSnapshotStats) { setStatsMd(""); }
 			return; // skip fetching while logged out (requires auth)
 		}
 		let disposed = false;
@@ -2015,7 +2018,7 @@ export default function ResumeTailorClient({ initialLoggedIn, initialAuthVerifie
 			}
 		})();
 		return () => { disposed = true; controller.abort(); };
-	}, [isLoggedIn, authPending, statsMd]);	// Recompute pricing tooltips synchronously from cached rows so they update immediately on UI changes
+	}, [isLoggedIn, authPending, statsMd, initialSnapshotLoaded, initialStatsMd]);	// Recompute pricing tooltips synchronously from cached rows so they update immediately on UI changes
 	useEffect(() => {
 		// NOTE: Legacy unified modelLabel is no longer authoritative for per-phase pricing.
 		// The previous implementation always used modelLabel for both fit & tailor tooltips,
@@ -3632,7 +3635,7 @@ export default function ResumeTailorClient({ initialLoggedIn, initialAuthVerifie
 	const fitMarkdown = useMemo(() => (fitOutput ? <Markdown>{fitOutput}</Markdown> : null), [fitOutput]);
 	const tailoredMarkdown = useMemo(() => (tailoredOutput ? <Markdown>{tailoredOutput}</Markdown> : null), [tailoredOutput]);
 	const judgeMarkdown = useMemo(() => (judgeOutput ? <Markdown>{judgeOutput}</Markdown> : null), [judgeOutput]);
-	const statsMarkdown = useMemo(() => (statsMd ? <Markdown>{statsMd}</Markdown> : null), [statsMd]);
+	const statsMarkdown = useMemo(() => (isLoggedIn === true && statsMd ? <Markdown>{statsMd}</Markdown> : null), [isLoggedIn, statsMd]);
 
 	return (
 		<div className="grid grid-cols-1 gap-4 pb-28 md:pb-0 md:grid-cols-2 text-slate-200 xl:gap-[18px] 2xl:gap-[18px] 2xl:grid-cols-[660px_660px] 2xl:max-w-[1338px] 2xl:mx-auto">
@@ -3709,12 +3712,12 @@ export default function ResumeTailorClient({ initialLoggedIn, initialAuthVerifie
 						className="w-full min-h-[400px] rounded-md border border-slate-700/60 bg-[#131820] p-3 placeholder:text-muted-foreground hover-thin-scrollbar xl:h-[496px] xl:min-h-[496px] xl:max-h-[496px] 2xl:h-[496px] 2xl:min-h-[496px] 2xl:max-h-[496px]"
 						value={resumeText}
 						onChange={(e) => setResumeText(e.target.value)}
-					// Keep normal styling; prevent editing via readOnly when applied
-					readOnly={appliedChecked && !uiDisabled}
-					disabled={uiDisabled}
-				/>
-				<textarea placeholder="Paste the target job description here..." className="w-full min-h-[400px] rounded-md border border-slate-700/60 bg-[#131820] p-3 placeholder:text-muted-foreground hover-thin-scrollbar xl:h-[496px] xl:min-h-[496px] xl:max-h-[496px] 2xl:h-[496px] 2xl:min-h-[496px] 2xl:max-h-[496px]" value={jdText} onChange={(e) => setJdText(e.target.value)} disabled={uiDisabled} />
-			</div>				{/* Compact block: checkbox, buttons, alerts, and hints */}
+						// Keep normal styling; prevent editing via readOnly when applied
+						readOnly={appliedChecked && !uiDisabled}
+						disabled={uiDisabled}
+					/>
+					<textarea placeholder="Paste the target job description here..." className="w-full min-h-[400px] rounded-md border border-slate-700/60 bg-[#131820] p-3 placeholder:text-muted-foreground hover-thin-scrollbar xl:h-[496px] xl:min-h-[496px] xl:max-h-[496px] 2xl:h-[496px] 2xl:min-h-[496px] 2xl:max-h-[496px]" value={jdText} onChange={(e) => setJdText(e.target.value)} disabled={uiDisabled} />
+				</div>				{/* Compact block: checkbox, buttons, alerts, and hints */}
 				<div className="space-y-3 mt-[15px] md:pl-1">
 					{/* Applied snapshot toggle */}
 					<div className="flex items-center gap-3 mt-1 mb-1 flex-wrap">
@@ -3920,6 +3923,7 @@ export default function ResumeTailorClient({ initialLoggedIn, initialAuthVerifie
 						<div className="text-2xl font-semibold mb-2 2xl:mb-3">Your Result</div>
 						<div
 							ref={fitBoxRef}
+							data-debug-result-panel="fit-forced"
 							tabIndex={0}
 							role="region"
 							aria-label="Result content. Press Ctrl+A to select all."
@@ -3937,7 +3941,7 @@ export default function ResumeTailorClient({ initialLoggedIn, initialAuthVerifie
 								<div className="text-muted-foreground italic">Click Fit, Tailor, or Judge to see results here.</div>
 							)}
 						</div>
-						{statsMarkdown && <div className="mt-2 text-sm text-slate-300">{statsMarkdown}</div>}
+						{statsMarkdown && <div data-debug-stats-block="true" className="mt-2 text-sm text-slate-300">{statsMarkdown}</div>}
 					</div>
 				) : (
 					<div className="mt-1 xl:mt-1 2xl:mt-1">
@@ -3945,6 +3949,7 @@ export default function ResumeTailorClient({ initialLoggedIn, initialAuthVerifie
 						<div className="text-2xl font-semibold mb-2 2xl:mb-3">Your Result</div>
 						<div
 							ref={singleResultRef}
+							data-debug-result-panel={effectiveResultType || "fit"}
 							tabIndex={0}
 							role="region"
 							aria-label="Result content. Press Ctrl+A to select all."
@@ -3978,7 +3983,7 @@ export default function ResumeTailorClient({ initialLoggedIn, initialAuthVerifie
 								<div className="text-muted-foreground italic">Click Fit, Tailor, or Judge to see results here.</div>
 							)}
 						</div>
-						{statsMarkdown && <div className="mt-3 md:mt-4 text-sm md:text-base text-slate-300 break-words">{statsMarkdown}</div>}
+						{statsMarkdown && <div data-debug-stats-block="true" className="mt-3 md:mt-4 text-sm md:text-base text-slate-300 break-words">{statsMarkdown}</div>}
 					</div>
 				)}
 			</div>
@@ -4062,4 +4067,3 @@ export default function ResumeTailorClient({ initialLoggedIn, initialAuthVerifie
 		</div>
 	);
 }
-
