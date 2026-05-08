@@ -2133,12 +2133,12 @@ export default function ResumeTailorClient({ initialLoggedIn, initialAuthVerifie
 		console.log('[Tooltip Debug] Starting pricing data fetch...');
 		(async () => {
 			try {
-				let sum = await api.get<{ averages_by_model?: Array<{ request_type?: string; model?: string; avg_price_usd?: string | number; n?: number }> }>("/budget/summary", { query: { model_count: 1 }, signal: controller.signal }).catch((err: any) => {
+				let sum = await api.get<{ averages_by_model?: Array<{ request_type?: string; model?: string; avg_price_usd?: string | number; n?: number }> }>("/budget/summary", { query: { output_models: 1 }, signal: controller.signal }).catch((err: any) => {
 					if (err?.status === 404) return null;
 					throw err;
 				});
 				if (!sum) {
-					sum = await api.get<{ averages_by_model?: Array<{ request_type?: string; model?: string; avg_price_usd?: string | number; n?: number }> }>("/billing/summary", { query: { model_count: 1 }, signal: controller.signal });
+					sum = await api.get<{ averages_by_model?: Array<{ request_type?: string; model?: string; avg_price_usd?: string | number; n?: number }> }>("/billing/summary", { query: { output_models: 1 }, signal: controller.signal });
 				}
 				console.log('[Tooltip Debug] /budget/summary response:', sum);
 				if (!disposed) setAvgRowsGlobal(Array.isArray(sum?.averages_by_model) ? sum!.averages_by_model! : []);
@@ -2148,7 +2148,7 @@ export default function ResumeTailorClient({ initialLoggedIn, initialAuthVerifie
 				}
 			}
 			try {
-				const rows = await api.get<Array<{ request_type?: string; model?: string; avg_price_usd?: string | number; n?: number }>>("/pricing/averages", { query: { scope: "user", model_count: 1 }, signal: controller.signal });
+				const rows = await api.get<Array<{ request_type?: string; model?: string; avg_price_usd?: string | number; n?: number }>>("/pricing/averages", { query: { scope: "user", output_models: 1 }, signal: controller.signal });
 				console.log('[Tooltip Debug] /pricing/averages response:', rows);
 				if (!disposed) setAvgRowsUser(rows);
 			} catch (err: any) {
@@ -2328,18 +2328,18 @@ export default function ResumeTailorClient({ initialLoggedIn, initialAuthVerifie
 	// Refresh cached averages so tooltips reflect latest charge immediately
 	const refreshAverages = useCallback(async () => {
 		try {
-			let sum = await api.get<{ averages_by_model?: Array<{ request_type?: string; model?: string; avg_price_usd?: string | number; n?: number }> }>("/budget/summary", { query: { model_count: 1 } }).catch((err: any) => {
+			let sum = await api.get<{ averages_by_model?: Array<{ request_type?: string; model?: string; avg_price_usd?: string | number; n?: number }> }>("/budget/summary", { query: { output_models: 1 } }).catch((err: any) => {
 				if (err?.status === 404) return null;
 				throw err;
 			});
 			if (!sum) {
-				sum = await api.get<{ averages_by_model?: Array<{ request_type?: string; model?: string; avg_price_usd?: string | number; n?: number }> }>("/billing/summary", { query: { model_count: 1 } });
+				sum = await api.get<{ averages_by_model?: Array<{ request_type?: string; model?: string; avg_price_usd?: string | number; n?: number }> }>("/billing/summary", { query: { output_models: 1 } });
 			}
 			setAvgRowsGlobal(Array.isArray(sum?.averages_by_model) ? sum!.averages_by_model! : []);
 		} catch {}
 		if (isLoggedIn === true) {
 			try {
-				const rows = await api.get<Array<{ request_type?: string; model?: string; avg_price_usd?: string | number; n?: number }>>("/pricing/averages", { query: { scope: "user", model_count: 1 } });
+				const rows = await api.get<Array<{ request_type?: string; model?: string; avg_price_usd?: string | number; n?: number }>>("/pricing/averages", { query: { scope: "user", output_models: 1 } });
 				setAvgRowsUser(rows);
 			} catch {}
 		}
