@@ -9,7 +9,7 @@ services:
       POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
       POSTGRES_DB: ${POSTGRES_DB:-${DB_NAME:-restailor}}
     ports:
-      - "5432:5432"
+      - "${POSTGRES_HOST_PORT:-5432}:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -22,7 +22,7 @@ services:
     image: redis:7
     restart: unless-stopped
     ports:
-      - "6379:6379"
+      - "${REDIS_HOST_PORT:-6379}:6379"
 
   api:
     build:
@@ -37,13 +37,6 @@ services:
         scripts/migrate_then_run.sh \
           uvicorn main:app \
             --host 0.0.0.0 --port 8000 \
-            --reload --reload-delay 0.5 \
-            --reload-dir /app \
-            --reload-include '*.py' \
-            --reload-exclude 'frontend/*' \
-            --reload-exclude '.git/*' \
-            --reload-exclude 'node_modules/*' \
-            --reload-exclude '__pycache__/*' \
             --no-access-log
     environment:
       DB_HOST: postgres
@@ -85,7 +78,7 @@ services:
       - ../:/app
     working_dir: /app
     ports:
-      - "8000:8000"
+      - "${API_HOST_PORT:-8000}:8000"
     depends_on:
       postgres:
         condition: service_healthy
@@ -149,15 +142,15 @@ services:
       - next-build:/app/.next
       - /app/node_modules
     ports:
-      - "3000:3000"
+      - "${NEXT_HOST_PORT:-3000}:3000"
     environment:
       # Use polling so hot reload works with Docker Desktop file sharing on Windows
       CHOKIDAR_USEPOLLING: "true"
       WATCHPACK_POLLING: "true"
       # Shorter poll to feel snappy; adjust if CPU spikes
       CHOKIDAR_INTERVAL: "300"
-      # Public (browser) calls from http://localhost:3000 should hit the host-mapped API port
-      NEXT_PUBLIC_API_BASE_URL: "http://localhost:8000"
+      # Public (browser) calls should hit the host-mapped API port
+      NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://localhost:8000}
       # Internal SSR calls from inside the Next container must use the Docker service DNS
       INTERNAL_API_BASE_URL: "http://api:8000"
       # Public site key for Turnstile widget. Must come from Doppler/env.
@@ -183,5 +176,5 @@ services:
 
 volumes:
   pgdata:
-    name: resume-tailor_pgdata
+    name: ${POSTGRES_VOLUME_NAME:-resume-tailor_pgdata}
   next-build:
