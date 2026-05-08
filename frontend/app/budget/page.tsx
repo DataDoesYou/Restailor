@@ -1,5 +1,11 @@
 import { headers } from "next/headers";
 import BillingClient from "@/components/pages/BillingClient";
+import { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Budget",
+  description: "Track provider-cost-equivalent usage for your own AI provider keys. Restailor Budget is a free usage-control tool, not a payment page.",
+};
 
 function getApiBase(): string {
   const isServer = typeof window === "undefined";

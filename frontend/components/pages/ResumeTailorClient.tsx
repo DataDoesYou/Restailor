@@ -3915,7 +3915,7 @@ export default function ResumeTailorClient({ initialLoggedIn, initialAuthVerifie
 			
 			{/* Your Information - left column on desktop, first in DOM */}
 			<div className="space-y-0 2xl:w-[660px]">
-				<h1 className="text-2xl font-semibold mt-1 mb-2 2xl:mb-3">Your Information</h1>
+				<h1 className="text-2xl font-semibold mt-1 mb-2 2xl:mb-3">Resume Tailor</h1>
 				{/* Inputs group with gap equal to column gap (18px) at XL/2XL */}
 				<div className="space-y-3 xl:space-y-[18px] 2xl:space-y-[18px] mt-0 md:pl-1">
 					<textarea

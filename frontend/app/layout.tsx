@@ -20,11 +20,11 @@ const metadataBase = new URL(siteUrl);
 
 export const metadata: Metadata = {
 	title: {
-		default: "Restailor - Tailor Your Resume to Any Job with AI",
+		default: "Restailor - Free Open-Source AI Resume Tailoring",
 		template: "%s | Restailor",
 	},
-	description: "Instantly customize your resume for every job application using advanced AI. Match job descriptions perfectly, highlight relevant skills, and land more interviews. Free trial available.",
-	keywords: ["resume builder", "AI resume", "resume tailoring", "job application", "resume optimization", "ATS resume", "career tools", "job search", "resume customization"],
+	description: "Restailor is a free, open-source resume tailoring and application tracking tool. Bring your own AI provider key, keep a local usage budget, and tailor resumes without paying Restailor.",
+	keywords: ["free resume builder", "open source resume tailoring", "BYOK AI resume", "bring your own key", "AI resume", "resume tailoring", "job application tracker", "ATS resume", "career tools", "job search"],
 	authors: [{ name: "Restailor" }],
 	creator: "Restailor",
 	publisher: "Restailor",
@@ -45,13 +45,13 @@ export const metadata: Metadata = {
 		locale: "en_US",
 		url: siteUrl,
 		siteName,
-		title: "Restailor - Tailor Your Resume to Any Job with AI",
-		description: "Instantly customize your resume for every job application using advanced AI. Match job descriptions perfectly, highlight relevant skills, and land more interviews.",
+		title: "Restailor - Free Open-Source AI Resume Tailoring",
+		description: "Tailor resumes and track applications with a free, open-source BYOK tool. Restailor does not sell credits or add provider markup.",
 	},
 	twitter: {
 		card: "summary_large_image",
-		title: "Restailor - Tailor Your Resume to Any Job with AI",
-		description: "Instantly customize your resume for every job application. Match job descriptions perfectly and land more interviews.",
+		title: "Restailor - Free Open-Source AI Resume Tailoring",
+		description: "A free hosted resume tailoring tool for people who bring their own AI provider key.",
 	},
 	icons: {
 		icon: [
@@ -111,17 +111,20 @@ export default async function RootLayout({
 							"@type": "WebApplication",
 							"name": siteName,
 							"url": siteUrl,
-							"description": "Instantly customize your resume for every job application using advanced AI. Match job descriptions perfectly, highlight relevant skills, and land more interviews.",
+							"description": "Free, open-source resume tailoring and application tracking for job seekers who bring their own AI provider key.",
 							"applicationCategory": "BusinessApplication",
+							"operatingSystem": "Web",
 							"offers": {
 								"@type": "Offer",
 								"price": "0",
-								"priceCurrency": "USD"
+								"priceCurrency": "USD",
+								"description": "Restailor is free to use. Model calls require a user-supplied provider API key and are billed by that provider."
 							},
 							"featureList": [
+								"Bring-your-own-key AI model access",
 								"AI-powered resume tailoring",
 								"Job description matching",
-								"ATS optimization",
+								"Budget tracking for provider-cost planning",
 								"Multiple AI models",
 								"Application tracking"
 							]

@@ -608,7 +608,7 @@ export default function SettingsClient({ initialSettings = null }: SettingsClien
 						<ul className="list-disc list-inside ml-2 space-y-1">
 							<li>Everything from "Delete all my data" above</li>
 							<li>Your account (username, email, password)</li>
-							<li>All credits (forfeited, no refunds)</li>
+							<li>Budget balance and saved provider-key metadata</li>
 							<li>Application tracking and analytics</li>
 							<li>All settings and preferences</li>
 						</ul>
