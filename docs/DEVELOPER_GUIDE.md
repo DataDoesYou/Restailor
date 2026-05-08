@@ -81,6 +81,8 @@ POSTGRES_HOST_PORT=15432 REDIS_HOST_PORT=16379 API_HOST_PORT=8001 NEXT_HOST_PORT
   doppler run --project restailor --config dev -- docker compose -f docker/docker-compose.dev.yml up --build
 ```
 
+The frontend public API and site URLs follow `API_HOST_PORT` and `NEXT_HOST_PORT` unless explicitly overridden.
+
 The default Postgres volume preserves existing local data from the previous project name. Docker may warn that `resume-tailor_pgdata` was created by the old project name; that warning is expected when reusing the existing local database. Set `POSTGRES_VOLUME_NAME` only if you intentionally want another local database volume.
 
 The API container runs without Uvicorn reload in Docker because WSL can expose a package symlink loop under `frontend/node_modules`. Restart the API container after backend code changes.

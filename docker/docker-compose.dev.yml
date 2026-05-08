@@ -150,12 +150,12 @@ services:
       # Shorter poll to feel snappy; adjust if CPU spikes
       CHOKIDAR_INTERVAL: "300"
       # Public (browser) calls should hit the host-mapped API port
-      NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://localhost:8000}
+      NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://localhost:${API_HOST_PORT:-8000}}
       # Internal SSR calls from inside the Next container must use the Docker service DNS
       INTERNAL_API_BASE_URL: "http://api:8000"
       # Public site key for Turnstile widget. Must come from Doppler/env.
       NEXT_PUBLIC_TURNSTILE_SITE_KEY: ${NEXT_PUBLIC_TURNSTILE_SITE_KEY:-}
-      NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-http://localhost:3000}
+      NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-http://localhost:${NEXT_HOST_PORT:-3000}}
       NEXT_PUBLIC_SUPPORT_EMAIL: ${NEXT_PUBLIC_SUPPORT_EMAIL:-support@example.com}
       NEXT_PUBLIC_GTAG_ID: ${NEXT_PUBLIC_GTAG_ID:-}
     depends_on:
