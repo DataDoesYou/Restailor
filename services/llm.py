@@ -429,11 +429,14 @@ async def stream_model(
         # Anthropic requires max_tokens; ensure a sensible default if not provided.
         _p = dict(params)
         _meta_role = _p.pop("_meta_role", None)  # Remove internal metadata
-        _effort = _p.pop("_effort", None)  # Extract effort param (Opus 4.5 beta)
+        _effort = _p.pop("_effort", None)  # Extract effort param for Opus output_config
         _p.setdefault("max_tokens", 4096)
         
-        # Check if this is an Opus 4.5 model (supports effort parameter)
-        is_opus_45 = "opus-4-5" in (model or "").lower() or "opus-4.5" in (model or "").lower()
+        model_lower = (model or "").lower()
+        # Check if this is an Opus 4.5 model (supports effort parameter via beta)
+        is_opus_45 = "opus-4-5" in model_lower or "opus-4.5" in model_lower
+        # Opus 4.7 uses adaptive thinking and output_config.effort on the standard API.
+        is_opus_47 = "opus-4-7" in model_lower or "opus-4.7" in model_lower
         
         # Extended thinking: if budget is configured, ensure max_tokens accommodates it
         thinking_config = _p.get("thinking")
@@ -446,6 +449,8 @@ async def stream_model(
             if "temperature" in _p:
                 _p.pop("temperature")
         
+        output_config = {"effort": _effort} if _effort and is_opus_47 else None
+
         # Use beta endpoint for effort parameter (Opus 4.5 only)
         use_beta = is_opus_45 and _effort
         
@@ -462,6 +467,8 @@ async def stream_model(
                     **_p,
                 )
             else:
+                if output_config:
+                    _p["output_config"] = output_config
                 stream = await client.messages.create(
                     model=model,
                     system=system_prompt,

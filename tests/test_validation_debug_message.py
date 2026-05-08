@@ -23,10 +23,10 @@ def test_validation_error_format():
         },
         {
             "name": "Label but no meta (broken state)",
-            "label": "GPT-5.3 Chat",
+            "label": "GPT-5.4 Mini",
             "meta": None,
             "multi": False,
-            "expected_pattern": r"\(label=GPT-5\.3 Chat, meta=NULL, multi=NO\)"
+            "expected_pattern": r"\(label=GPT-5\.4 Mini, meta=NULL, multi=NO\)"
         },
         {
             "name": "Multi-mode with no models",

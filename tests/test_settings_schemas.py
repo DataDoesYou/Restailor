@@ -305,27 +305,28 @@ def test_resolve_effective_settings_with_org_defaults():
     # assert effective.tailor_models == [allowed[0]]  # Org default applied
 
 
-def test_model_upgrade_map_empty():
-    """Test that model upgrade map returns empty dict by default."""
+def test_model_upgrade_map_contains_known_deprecations():
+    """Test that the model upgrade map contains known current deprecations."""
     upgrade_map = get_model_upgrade_map()
     
     assert isinstance(upgrade_map, dict)
-    # Default should be empty (no upgrades defined)
-    assert len(upgrade_map) == 0
+    assert upgrade_map["gpt-5.4"] == "gpt-5.5"
+    assert upgrade_map["claude-opus-4-6"] == "claude-opus-4-7"
+    assert upgrade_map["grok-4-1-fast-reasoning"] == "grok-4.3"
 
 
 
 
 def test_apply_model_upgrades_no_mapping():
     """Test that models without upgrade mappings are returned unchanged."""
-    # No upgrade defined for this model
-    original = "gpt-5.3-chat-latest"
+    # Current allowed models are returned unchanged.
+    original = "gpt-5.5"
     result = apply_model_upgrades(original)
     
     assert result == original
     
-    # Test with another valid model
-    original_model = "claude-4.1-opus"
+    # Test with another valid model.
+    original_model = "claude-opus-4-7"
     result_model = apply_model_upgrades(original_model)
     
     assert result_model == original_model
@@ -336,7 +337,7 @@ def test_apply_model_upgrades_with_mapping(monkeypatch):
     # Mock the upgrade map to test explicit upgrade logic
     def mock_upgrade_map():
         return {
-            "gpt-4.1": "gpt-5.3-chat-latest",
+            "gpt-4.1": "gpt-5.5",
         }
     
     # Mock get_allowed_models to say gpt-4.1 is NOT allowed
@@ -357,7 +358,7 @@ def test_apply_model_upgrades_with_mapping(monkeypatch):
     )
     
     # Test model_id upgrade via explicit mapping
-    assert apply_model_upgrades("gpt-4.1") == "gpt-5.3-chat-latest"
+    assert apply_model_upgrades("gpt-4.1") == "gpt-5.5"
     
     # Test valid model is NOT upgraded
     if allowed:

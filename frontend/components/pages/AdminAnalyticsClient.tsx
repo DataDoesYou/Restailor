@@ -16,16 +16,22 @@ function getModelDisplayName(modelId: string): string {
   const historicalMap: Record<string, string> = {
     // Current models
     'claude-sonnet-4-6': 'Claude Sonnet 4.6',
+    'claude-opus-4-7': 'Claude Opus 4.7',
     'claude-opus-4-6': 'Claude Opus 4.6',
-    'gemini-2.5-flash': 'Gemini 2.5 Flash',
-    'gemini-2.5-pro': 'Gemini 2.5 Pro',
-    'gpt-5.3-chat-latest': 'GPT-5.3 Chat',
+    'gemini-3-flash-preview': 'Gemini 3 Flash',
+    'gemini-3.1-pro-preview': 'Gemini 3.1 Pro',
+    'gpt-5.5': 'GPT-5.5',
+    'gpt-5.4-mini': 'GPT-5.4 Mini',
     'gpt-5.4': 'GPT-5.4',
+    'gpt-5.3-chat-latest': 'GPT-5.3 Chat',
+    'grok-4.3': 'Grok 4.3',
     'grok-4-1-fast-reasoning': 'Grok 4.1 Fast Reasoning',
     'grok-4-fast': 'Grok 4 Fast',
     'grok-4': 'Grok 4',
     
     // Legacy models (plain model IDs)
+    'gemini-2.5-flash': 'Gemini 2.5 Flash',
+    'gemini-2.5-pro': 'Gemini 2.5 Pro',
     'gpt-5.1-instant': 'GPT-5.1 Instant',
     'gpt-5.1-thinking': 'GPT-5.1 Thinking',
     'gpt-4.1': 'GPT-4.1',

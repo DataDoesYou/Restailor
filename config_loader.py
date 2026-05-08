@@ -252,7 +252,7 @@ def build_gen_params(
     - Always include the per-role output cap mapped to the provider's expected key name.
     - OpenAI GPT-5: include reasoning.effort and max_output_tokens only (no temp/stop).
     - OpenAI (non-gpt-5): allow temperature, max_output_tokens, stop.
-    - Anthropic: temperature, max_tokens, stop_sequences.
+    - Anthropic: temperature, max_tokens, stop_sequences; Opus 4.7 uses adaptive thinking.
     - Gemini: temperature, max_output_tokens, stop_sequences.
     - xAI (Grok): temperature, max_tokens; include stop only if model is not grok-4.
     """
@@ -316,16 +316,21 @@ def build_gen_params(
         return out
 
     if p == "anthropic":
-        # Build thinking config if budget is set
+        mdl_lower = (model or "").lower()
+
+        # Build thinking config. Opus 4.7 removed budget-token extended thinking
+        # in favor of adaptive thinking plus output_config.effort.
         thinking_budget = _anthropic_role_thinking_budget(cfg, role)
         thinking_config = None
-        if thinking_budget is not None:
+        if "opus-4-7" in mdl_lower or "opus-4.7" in mdl_lower:
+            thinking_config = {"type": "adaptive"}
+        elif thinking_budget is not None:
             thinking_config = {
                 "type": "enabled",
                 "budget_tokens": thinking_budget,
             }
         
-        # Effort parameter (Opus 4.5 only, beta)
+        # Effort parameter for Opus models that support output_config.effort.
         effort = _anthropic_role_effort(cfg, role)
         
         raw = {

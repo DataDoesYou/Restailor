@@ -236,7 +236,7 @@ test.describe("Model Settings E2E", () => {
     await page.waitForTimeout(500);
     
     const fitSection = settingsSection.locator('text=/fit/i').locator("..");
-    await fitSection.locator('input[type="checkbox"][value="grok-4"]').check();
+    await fitSection.locator('input[type="checkbox"][value="grok-4.3"]').check();
     
     await page.waitForTimeout(1000);
     
@@ -255,7 +255,7 @@ test.describe("Model Settings E2E", () => {
     await expect(newMultiToggle).toBeChecked();
     
     const newFitSection = newSettingsSection.locator('text=/fit/i').locator("..");
-    const grokCheckbox = newFitSection.locator('input[type="checkbox"][value="grok-4"]');
+    const grokCheckbox = newFitSection.locator('input[type="checkbox"][value="grok-4.3"]');
     await expect(grokCheckbox).toBeChecked();
     
     await newContext.close();
