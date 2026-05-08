@@ -115,8 +115,8 @@ export default function SidebarClient({ initialMe = null, initialBalance = null 
 
   // Model selection state - managed by SidebarModels
   const [fitModelLabel, setFitModelLabel] = useState<string>("GPT-5");
-  const [tailorModelLabel, setTailorModelLabel] = useState<string>("Grok 4 Fast");
-  const [judgeLabel, setJudgeLabel] = useState<string>("Grok 4 Fast");
+  const [tailorModelLabel, setTailorModelLabel] = useState<string>("Grok 4.3");
+  const [judgeLabel, setJudgeLabel] = useState<string>("Grok 4.3");
 
   // Simple handlers - SidebarModels handles DB persistence
   const handleFitChange = (label: string) => {
@@ -183,7 +183,7 @@ export default function SidebarClient({ initialMe = null, initialBalance = null 
   }, []);
 
   // Listen for model selection updates from SidebarModels
-  // NOTE: These aliases come in alias format (e.g. "GPT-5.3 Chat"), not full label format
+  // NOTE: These aliases come in alias format (e.g. "GPT-5.5 Instant"), not full label format
   // They're only used for the legacy UI state, not for dispatching events
   useEffect(() => {
     const onMultiModels = (e: Event) => {
@@ -213,7 +213,7 @@ export default function SidebarClient({ initialMe = null, initialBalance = null 
                 {featureAnalytics && (
                   <Link href="/dashboard/analytics" className={navLinkClass("/dashboard/analytics")} aria-current={isActive("/dashboard/analytics") ? "page" : undefined}>Analytics</Link>
                 )}
-                <Link href="/billing" className={navLinkClass("/billing")} aria-current={isActive("/billing") ? "page" : undefined}>Billing</Link>
+                <Link href="/budget" className={navLinkClass("/budget")} aria-current={isActive("/budget") ? "page" : undefined}>Budget</Link>
                 <Link href="/security" className={navLinkClass("/security")} aria-current={isActive("/security") ? "page" : undefined}>Security</Link>
                 <Link href="/settings" className={navLinkClass("/settings")} aria-current={isActive("/settings") ? "page" : undefined}>Settings</Link>
                 <Link href="/help" className={navLinkClass("/help")} aria-current={isActive("/help") ? "page" : undefined}>Help</Link>

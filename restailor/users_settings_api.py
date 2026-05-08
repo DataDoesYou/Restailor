@@ -204,6 +204,10 @@ async def update_user_model_settings(
         # Prepare settings for storage
         now = datetime.now(timezone.utc)
         settings_dict = settings.model_dump(exclude={"updated_at"})  # Don't store updated_at in JSONB
+        if existing is not None and isinstance(getattr(existing, "settings", None), dict):
+            byok_sync_modes = existing.settings.get("byok_sync_modes")
+            if isinstance(byok_sync_modes, dict):
+                settings_dict["byok_sync_modes"] = {str(k): bool(v) for k, v in byok_sync_modes.items()}
         
         # Ensure version is set (for future schema migrations)
         if "version" not in settings_dict:

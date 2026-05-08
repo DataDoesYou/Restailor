@@ -13,6 +13,7 @@ enable_reload_detection = false  # Show double-reload diagnostic banner on front
 # Root limits table (add user_active_job_cap override; child tables follow below)
 [limits]
 user_active_job_cap = 10
+active_job_stale_after_minutes = 360
 
 [limits.text]
 char_cap_resume = 120000
@@ -131,13 +132,13 @@ stop_sequences = ["\n### END OUTPUT\n"]
 
 [providers.openai]
 enabled = true
-model_tailor = "gpt-5.4"
-model_fit    = "gpt-5.4"
-model_judge  = "gpt-5.4"
+model_tailor = "gpt-5.5"
+model_fit    = "gpt-5.5"
+model_judge  = "gpt-5.5"
 # Additional models for allowlist (used by multi-model feature)
-model_tailor_alt = "gpt-5.3-chat-latest"
-model_fit_alt = "gpt-5.3-chat-latest"
-model_judge_alt = "gpt-5.3-chat-latest"
+model_tailor_alt = "chat-latest"
+model_fit_alt = "chat-latest"
+model_judge_alt = "chat-latest"
 model_tailor_alt2 = "gpt-4.1"
 model_fit_alt2 = "gpt-4.1"
 model_judge_alt2 = "gpt-4.1"
@@ -151,15 +152,15 @@ gpt5_disable_external_cancel = false    # enable cancel button for GPT-5 models
 
 [providers.anthropic]
 enabled = true
-model_tailor = "claude-opus-4-6"
-model_fit    = "claude-opus-4-6"
-model_judge  = "claude-opus-4-6"
+model_tailor = "claude-opus-4-7"
+model_fit    = "claude-opus-4-7"
+model_judge  = "claude-opus-4-7"
 # Additional models for allowlist
 model_tailor_alt = "claude-sonnet-4-6"
 model_fit_alt = "claude-sonnet-4-6"
 model_judge_alt = "claude-sonnet-4-6"
 
-## Extended thinking (Claude Opus 4.6+)
+## Adaptive thinking (Claude Opus 4.7+) / extended thinking (Claude Sonnet 4.6+)
 ## budget_tokens: 1024 to 200000 (max thinking tokens per request)
 ## Start small and increase as needed; above 32k use batch processing
 ## Minimum: 1024 tokens
@@ -167,7 +168,7 @@ thinking_budget_tailor = 1024
 thinking_budget_fit    = 1024
 thinking_budget_judge  = 1024
 
-## Effort parameter (Claude Opus 4.6 only, beta)
+## Effort parameter (Claude Opus 4.7 only, beta)
 ## Values: "high" (default/max quality), "medium", "low" (faster/cheaper)
 effort_tailor = "high"
 effort_fit    = "high"
@@ -204,9 +205,9 @@ flash_min_judge  = 16384  # Judge already has 16384 cap; keeps parity / explicit
 
 [providers.xai]
 enabled = true
-model_tailor = "grok-4"
-model_fit    = "grok-4"
-model_judge  = "grok-4"
+model_tailor = "grok-4.3"
+model_fit    = "grok-4.3"
+model_judge  = "grok-4.3"
 # Additional models for allowlist
 model_tailor_alt = "grok-4-1-fast-reasoning"
 model_fit_alt = "grok-4-1-fast-reasoning"
@@ -445,12 +446,14 @@ first_byte_ms = 60000
 stream_stall_abort_ms = 45000
 
 [pricing]
-multiplier = 2.0
+multiplier = 1
 currency = "USD"
 
 [pricing.models]
 "claude-sonnet-4-6.input" = 3.00
 "claude-sonnet-4-6.output" = 15.00
+"claude-opus-4-7.input" = 5.00
+"claude-opus-4-7.output" = 25.00
 "claude-opus-4-6.input" = 5.00
 "claude-opus-4-6.output" = 25.00
 "claude-haiku-4-5-20251001.input" = 1.00
@@ -469,10 +472,16 @@ currency = "USD"
 "gpt-5.1-instant.output" = 10.00
 "gpt-5.1-thinking.input" = 1.25
 "gpt-5.1-thinking.output" = 10.00
+"gpt-5.5.input" = 5.00
+"gpt-5.5.output" = 30.00
+"chat-latest.input" = 5.00
+"chat-latest.output" = 30.00
 "gpt-5.4.input" = 2.50
 "gpt-5.4.output" = 15.00
 "gpt-5.3-chat-latest.input" = 1.75
 "gpt-5.3-chat-latest.output" = 14.00
+"grok-4.3.input" = 1.25
+"grok-4.3.output" = 2.50
 "grok-4-1-fast-reasoning.input" = 0.20
 "grok-4-1-fast-reasoning.output" = 0.50
 "grok-4.input" = 3.00
@@ -481,19 +490,27 @@ currency = "USD"
 # Back-compat aliases from display names to provider model IDs.
 [pricing.aliases]
 "Claude Sonnet 4.6" = "claude-sonnet-4-6"
-"Claude Opus 4.6" = "claude-opus-4-6"
+"Claude Opus 4.7" = "claude-opus-4-7"
+"Claude Opus 4.6" = "claude-opus-4-7"
 "Claude Haiku 4.5" = "claude-haiku-4-5-20251001"
 "Gemini 3 Flash" = "gemini-3-flash-preview"
 "Gemini 2.5 Flash" = "gemini-3-flash-preview"
 "Gemini 3.1 Pro" = "gemini-3.1-pro-preview"
 "GPT-4.1" = "gpt-4.1"
 "GPT-5" = "gpt-5"
+"GPT-5.5" = "gpt-5.5"
+"GPT-5.4" = "gpt-5.5"
+"GPT-5.5 Instant" = "chat-latest"
+"GPT-5.4 Mini" = "chat-latest"
+"GPT-5.3 Chat" = "chat-latest"
+"Grok 4.3" = "grok-4.3"
 "Grok 4.1 Fast Reasoning" = "grok-4-1-fast-reasoning"
-"Grok 4" = "grok-4"
+"Grok 4 Fast" = "grok-4-1-fast-reasoning"
+"Grok 4" = "grok-4.3"
 
 # --- Stripe (optional; disabled by default) ---
 [stripe]
-enabled = true
+enabled = false
 # Webhook secret should be provided via env or keyring in production; default empty
 webhook_secret = ""
 

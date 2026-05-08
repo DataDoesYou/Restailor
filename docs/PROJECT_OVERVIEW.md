@@ -33,10 +33,10 @@ Resume Tailor is a production-grade SaaS application that uses AI to tailor resu
 - **Email:** SMTP via Brevo (formerly Sendinblue)
 
 ### AI Providers
-- OpenAI (GPT-5.3 Chat, GPT-5.4)
+- OpenAI (GPT-5.5 Instant, GPT-5.5)
 - Anthropic Claude (Opus 4.6, Sonnet 4.6)
 - Google Gemini (3.1 Pro, 3 Flash)
-- xAI Grok (Grok 4, Grok 4.1 Fast Reasoning)
+- xAI Grok (Grok 4.1 Fast Reasoning, Grok 4.3)
 - Extensible provider abstraction in `services/llm.py`
 
 ## Architecture Highlights
@@ -446,15 +446,15 @@ window.__analyzeStageIssues()
 ## Pricing & Credits
 
 **Credit System**
-- Users purchase credits to use AI features
-- Each operation costs credits based on model and token usage
+- Users manage Budget credits as a local usage-control tool and provide their own provider API keys
+- Each operation records provider-cost-equivalent Budget usage based on model and token usage
 - Real-time balance checking before job execution
 - Insufficient balance returns 402 Payment Required
 
 **Credit Pricing** (configured in `config/app.toml` `[pricing]` section)
 - Default: $0.01 per credit
 - Multiplier: 5.0x (configurable)
-- Bulk purchase discounts available
+- Bulk purchase discounts are not used in BYOK-only mode
 - Admin can grant credits via `/admin/users/{id}/credits/grant`
 
 **Operation Costs**

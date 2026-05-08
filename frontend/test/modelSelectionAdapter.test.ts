@@ -61,16 +61,16 @@ describe("modelSelectionAdapter", () => {
         fit_models: ["gpt-5", "claude-4.1-opus"],
         tailor_models: ["gemini-3.1-pro-preview"],
         judge_models: [],
-        last_single_fit: "grok-4",
-        last_single_tailor: "grok-4",
-        last_single_judge: "grok-4",
+        last_single_fit: "grok-4-1-fast-reasoning",
+        last_single_tailor: "grok-4-1-fast-reasoning",
+        last_single_judge: "grok-4-1-fast-reasoning",
       };
 
       const result = enterMulti(settings);
 
       expect(result.fit_models).toEqual(["gpt-5", "claude-4.1-opus"]);
       expect(result.tailor_models).toEqual(["gemini-3.1-pro-preview"]);
-      expect(result.judge_models).toEqual(["grok-4"]); // Seeded from last_single_judge
+      expect(result.judge_models).toEqual(["grok-4-1-fast-reasoning"]); // Seeded from last_single_judge
     });
 
     it("should leave arrays empty if no last_single_* values", () => {
@@ -108,7 +108,7 @@ describe("modelSelectionAdapter", () => {
         ...createDefaultSettings(),
         multi_model_enabled: true,
         fit_models: ["gpt-5", "claude-4.1-opus"],
-        tailor_models: ["gemini-3.1-pro-preview", "grok-4"],
+        tailor_models: ["gemini-3.1-pro-preview", "grok-4-1-fast-reasoning"],
         judge_models: ["gpt-5"],
       };
 
@@ -244,7 +244,7 @@ describe("modelSelectionAdapter", () => {
         fit_models: ["gpt-5"],
       };
 
-      const allModels = ["gpt-5", "claude-4.1-opus", "gemini-3.1-pro-preview", "grok-4"];
+      const allModels = ["gpt-5", "claude-4.1-opus", "gemini-3.1-pro-preview", "grok-4-1-fast-reasoning"];
       const result = selectAll("fit", allModels, settings);
 
       expect(result.fit_models).toEqual(allModels);
@@ -548,7 +548,7 @@ describe("modelSelectionAdapter", () => {
         multi_model_enabled: true,
       };
 
-      const allModels = ["gpt-5", "claude-4.1-opus", "gemini-3.1-pro-preview", "grok-4"];
+      const allModels = ["gpt-5", "claude-4.1-opus", "gemini-3.1-pro-preview", "grok-4-1-fast-reasoning"];
 
       // Select all
       settings = selectAll("tailor", allModels, settings);

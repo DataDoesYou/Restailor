@@ -73,7 +73,7 @@ describe('Validation Error Debug Info', () => {
 	it('should show label but no meta when model is partially selected', async () => {
 		// Mock a scenario where we have a label but no meta (broken state)
 		const mockEvent = new CustomEvent('rt-sidebar', {
-			detail: { fitModelLabel: 'GPT-5.3 Chat' }
+			detail: { fitModelLabel: 'GPT-5.5 Instant' }
 		});
 
 		render(<ResumeTailorClient />);

@@ -189,6 +189,7 @@ async def stream_model(
     stop_markers: List[str] | None,
     job_id: str,
     external_cancel: Optional[Callable[[], Awaitable[bool]]] = None,
+    api_key: str | None = None,
 ) -> AsyncIterator[str]:
     """Unified streaming generator across providers.
 
@@ -256,33 +257,8 @@ async def stream_model(
             import logging as _log
             _log.getLogger(__name__).debug("stream_model: cancel flag set failed: %s", ex)
 
-    # Resolve API key like the worker: keyring first, then environment
-    def _get_api_key(p: str) -> Optional[str]:
-        secret_names = {
-            "openai": "OPENAI_API_KEY",
-            "anthropic": "CLAUDE_API_KEY",
-            "gemini": "GEMINI_API_KEY",
-            "xai": "GROK_API_KEY",
-        }
-        name = secret_names.get(p)
-        if not name:
-            return None
-        key: Optional[str] = None
-        try:
-            import keyring  # type: ignore
-            key = keyring.get_password("restailor", name)  # type: ignore
-        except Exception:
-            key = None
-        if not key:
-            import os
-            key = os.getenv(name)
-        return key
-
-    api_key = _get_api_key(prov)
     if prov in ("openai", "anthropic", "gemini", "xai") and not api_key:
-        raise RuntimeError(
-            f"Missing API key for provider '{prov}'. Add it via keyring (service='restailor', username='{('OPENAI_API_KEY' if prov=='openai' else 'CLAUDE_API_KEY' if prov=='anthropic' else 'GEMINI_API_KEY' if prov=='gemini' else 'GROK_API_KEY')}') or set the environment variable."
-        )
+        raise RuntimeError("missing_byok_key")
 
     async def _maybe_close(obj: Any) -> None:
         try:
@@ -453,11 +429,14 @@ async def stream_model(
         # Anthropic requires max_tokens; ensure a sensible default if not provided.
         _p = dict(params)
         _meta_role = _p.pop("_meta_role", None)  # Remove internal metadata
-        _effort = _p.pop("_effort", None)  # Extract effort param (Opus 4.5 beta)
+        _effort = _p.pop("_effort", None)  # Extract effort param for Opus output_config
         _p.setdefault("max_tokens", 4096)
         
-        # Check if this is an Opus 4.5 model (supports effort parameter)
-        is_opus_45 = "opus-4-5" in (model or "").lower() or "opus-4.5" in (model or "").lower()
+        model_lower = (model or "").lower()
+        # Check if this is an Opus 4.5 model (supports effort parameter via beta)
+        is_opus_45 = "opus-4-5" in model_lower or "opus-4.5" in model_lower
+        # Opus 4.7 uses adaptive thinking and output_config.effort on the standard API.
+        is_opus_47 = "opus-4-7" in model_lower or "opus-4.7" in model_lower
         
         # Extended thinking: if budget is configured, ensure max_tokens accommodates it
         thinking_config = _p.get("thinking")
@@ -470,6 +449,8 @@ async def stream_model(
             if "temperature" in _p:
                 _p.pop("temperature")
         
+        output_config = {"effort": _effort} if _effort and is_opus_47 else None
+
         # Use beta endpoint for effort parameter (Opus 4.5 only)
         use_beta = is_opus_45 and _effort
         
@@ -486,6 +467,8 @@ async def stream_model(
                     **_p,
                 )
             else:
+                if output_config:
+                    _p["output_config"] = output_config
                 stream = await client.messages.create(
                     model=model,
                     system=system_prompt,
@@ -543,7 +526,18 @@ async def stream_model(
         # Try SDK streaming; if unavailable, fall back to chunking the full text.
         from google import genai  # type: ignore
         from google.genai import types  # type: ignore
-        client = genai.Client(api_key=api_key)
+        google_clients: list[tuple[Any, str]] = []
+        try:
+            google_clients.append((genai.Client(api_key=api_key), "google_ai_studio"))
+        except Exception as ex:
+            _LOG.debug("gemini client init failed: mode=google_ai_studio err=%s", ex)
+        try:
+            google_clients.append((genai.Client(vertexai=True, api_key=api_key), "vertex_ai_express"))
+        except Exception as ex:
+            _LOG.debug("gemini client init failed: mode=vertex_ai_express err=%s", ex)
+        if not google_clients:
+            raise RuntimeError("Unable to initialize Google Gen AI client")
+        client = google_clients[0][0]
         # Prefer plain-text responses; keep params merged from config (snake_case)
         # Coerce 'thinking' dict into SDK type to ensure it's honored
         _p = dict(params)
@@ -639,7 +633,7 @@ async def stream_model(
         try:
             loop = asyncio.get_running_loop()
             q: asyncio.Queue[str | None] = asyncio.Queue(maxsize=QUEUE_MAXSIZE)
-            stream_holder: dict[str, Any] = {"stream": None, "final_text": ""}
+            stream_holder: dict[str, Any] = {"stream": None, "final_text": "", "client": client, "mode": google_clients[0][1]}
             _resolved_cap = _p.get("max_output_tokens")
 
             def _pump() -> None:
@@ -647,15 +641,23 @@ async def stream_model(
                 warn95 = False
                 finish_reasons: set[str] = set()
                 try:
-                    try:
-                        s = client.models.generate_content_stream(
-                            model=model,
-                            contents=user_prompt,
-                            config=gen_cfg,
-                        )
-                        stream_holder["stream"] = s
-                    except Exception as e:
-                        _LOG.error("gemini stream init failed: %s", e)
+                    last_error: Exception | None = None
+                    for candidate_client, client_mode in google_clients:
+                        try:
+                            s = candidate_client.models.generate_content_stream(
+                                model=model,
+                                contents=user_prompt,
+                                config=gen_cfg,
+                            )
+                            stream_holder["stream"] = s
+                            stream_holder["client"] = candidate_client
+                            stream_holder["mode"] = client_mode
+                            break
+                        except Exception as e:
+                            last_error = e
+                            _LOG.warning("gemini stream init failed: mode=%s err=%s", client_mode, e)
+                    if stream_holder.get("stream") is None:
+                        _LOG.error("gemini stream init failed for all modes: %s", last_error)
                         loop.call_soon_threadsafe(q.put_nowait, None)
                         return
                     accum = ""
@@ -777,7 +779,8 @@ async def stream_model(
                             from google import genai as _ggenai  # type: ignore
                             try:
                                 # Best-effort token counting (prompt only available here); completion from accumulated text
-                                ct = client.models.count_tokens(model=model, contents=user_prompt)
+                                active_client = stream_holder.get("client") or client
+                                ct = active_client.models.count_tokens(model=model, contents=user_prompt)
                                 # Library may expose fields under different attribute names; access defensively
                                 p_tok = getattr(ct, "total_tokens", None) or getattr(ct, "totalTokens", None)
                                 if p_tok is None:
@@ -885,8 +888,18 @@ async def stream_model(
             _log.getLogger(__name__).debug("gemini streaming not available, fallback to non-streaming: %s", ex)
         # Non-streaming fallback: generate full text and emit in small chunks
         resp = None
+        text = ""
         try:
-            resp = client.models.generate_content(model=model, contents=user_prompt, config=gen_cfg)
+            last_error: Exception | None = None
+            for candidate_client, client_mode in google_clients:
+                try:
+                    resp = candidate_client.models.generate_content(model=model, contents=user_prompt, config=gen_cfg)
+                    break
+                except Exception as ex:
+                    last_error = ex
+                    _LOG.warning("gemini non-streaming failed: mode=%s err=%s", client_mode, ex)
+            if resp is None and last_error is not None:
+                raise last_error
             text = getattr(resp, "text", "") or ""
             if not text:
                 # Attempt to reconstruct from candidates->content.parts text

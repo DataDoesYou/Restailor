@@ -55,7 +55,7 @@ export default function HelpClient() {
 							</li>
 							<li className="flex items-start gap-2">
 								<span className="text-green-400 mt-1">✓</span>
-								<span><strong>How to claim:</strong> Navigate to Billing → Click "Claim Free Trial"</span>
+								<span><strong>How to claim:</strong> Navigate to Budget → Click "Claim Free Trial"</span>
 							</li>
 							<li className="flex items-start gap-2">
 								<span className="text-green-400 mt-1">✓</span>
@@ -146,12 +146,12 @@ export default function HelpClient() {
 					</div>
 
 					<div>
-						<h3 className="font-semibold text-lg mb-2">Billing & Credits</h3>
+						<h3 className="font-semibold text-lg mb-2">Budget</h3>
 						<div className="space-y-3 text-slate-300">
 							<div>
 								<h4 className="font-semibold text-amber-200">Free Trial</h4>
 								<ul className="list-disc list-inside space-y-1 ml-4 mt-1">
-									<li>Navigate to Billing page to claim your free trial credits</li>
+									<li>Navigate to Budget page to claim your free trial credits</li>
 									<li>Trial credits work with select AI models</li>
 									<li>One-time offer per account - use them wisely!</li>
 									<li>No payment information required to start</li>
@@ -163,7 +163,7 @@ export default function HelpClient() {
 									<li>Credits are deducted based on the AI model used</li>
 									<li>Different models have different pricing</li>
 									<li>Your balance is shown in the sidebar</li>
-									<li>Purchase additional credits anytime from the Billing page</li>
+									<li>Add or remove Budget credits anytime from the Budget page</li>
 								</ul>
 							</div>
 						</div>
@@ -234,7 +234,7 @@ export default function HelpClient() {
 							Free trial credits are limited to specific AI models. These trial-eligible models provide excellent results while keeping costs manageable.
 						</p>
 						<p className="text-amber-300">
-							<strong>Note:</strong> Premium models require purchasing additional credits after your trial ends.
+							<strong>Note:</strong> Premium models require adding Budget credits after your trial ends.
 						</p>
 					</div>
 
@@ -275,7 +275,7 @@ export default function HelpClient() {
 						<h3 className="font-semibold text-lg mb-2">Trial vs. Paid Accounts</h3>
 						<ul className="list-disc list-inside space-y-1 text-slate-300 ml-4">
 							<li><strong>Trial accounts:</strong> Free credits, limited to trial-eligible models</li>
-							<li><strong>Paid accounts:</strong> Access to all premium models, no restrictions</li>
+							<li><strong>BYOK accounts:</strong> Access to all provider models, no restrictions</li>
 							<li>Seamlessly transition from trial to paid by adding credits</li>
 						</ul>
 					</div>
@@ -367,14 +367,14 @@ export default function HelpClient() {
 							<div>
 								<h4 className="font-semibold text-amber-300">"Trial already claimed"</h4>
 								<p className="text-slate-300">
-									Free trial is a one-time offer per account. If you've already claimed it, you'll need to purchase credits to continue using the service.
+									Free trial is a one-time offer per account. If you've already claimed it, you'll need to add Budget credits to continue using the service.
 								</p>
 							</div>
 
 							<div>
 								<h4 className="font-semibold text-amber-300">Trial models not available</h4>
 								<p className="text-slate-300">
-									Some premium models are not available with trial credits. Claim your trial on the Billing page, or purchase credits to access all models.
+									Some provider models are not available with trial credits. Claim your trial on the Budget page, or add Budget credits to access all models.
 								</p>
 							</div>
 
@@ -394,7 +394,7 @@ export default function HelpClient() {
 							<div>
 								<h4 className="font-semibold text-red-300">"Balance insufficient" / 402 Payment Required</h4>
 								<p className="text-slate-300">
-									You don't have enough credits for the selected models. Add credits from the Billing page or switch to less expensive models.
+									You don't have enough credits for the selected models. Add credits from the Budget page or switch to less expensive models.
 								</p>
 							</div>
 
@@ -483,7 +483,7 @@ export default function HelpClient() {
 					<div>
 						<h4 className="font-semibold text-amber-300">How do I get started for free?</h4>
 						<p className="text-slate-300">
-							Create an account, then navigate to the Billing page and click "Claim Free Trial" to receive your trial credits. No credit card required!
+							Create an account, then navigate to the Budget page and click "Claim Free Trial" to receive your trial credits. No credit card required!
 						</p>
 					</div>
 
@@ -504,7 +504,7 @@ export default function HelpClient() {
 					<div>
 						<h4 className="font-semibold text-amber-300">What happens when my trial runs out?</h4>
 						<p className="text-slate-300">
-							You'll need to add credits to continue tailoring resumes. Navigate to the Billing page to purchase more credits at any time.
+							You'll need to add credits to continue tailoring resumes. Navigate to the Budget page to purchase more credits at any time.
 						</p>
 					</div>
 
@@ -546,14 +546,14 @@ export default function HelpClient() {
 					<div>
 						<h4 className="font-semibold text-amber-300">What payment methods do you accept?</h4>
 						<p className="text-slate-300">
-							We accept major credit cards and process payments securely through Stripe.
+							We accept major credit cards and use your own provider API key; Stripe checkout is disabled.
 						</p>
 					</div>
 
 					<div>
 						<h4 className="font-semibold text-amber-300">How do I cancel my account?</h4>
 						<p className="text-slate-300">
-							There's no subscription to cancel - you only pay for credits as you use them. To permanently delete your account, go to Settings and use the "Delete my account" option.
+							There's no subscription to cancel - you only manage Budget credits as you use them. To permanently delete your account, go to Settings and use the "Delete my account" option.
 						</p>
 					</div>
 				</div>
@@ -614,7 +614,7 @@ export default function HelpClient() {
 					</div>
 
 					<div>
-						<h3 className="font-semibold text-lg mb-2">Billing Inquiries</h3>
+						<h3 className="font-semibold text-lg mb-2">Budget Inquiries</h3>
 						<p className="text-slate-300">
 							For questions about charges, refunds, or payment issues, contact us at {supportText} with your account email.
 						</p>

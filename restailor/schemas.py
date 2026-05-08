@@ -62,6 +62,7 @@ class UserInputs(BaseModel):
 class UserSettings(BaseModel):
     public_profile: StrictBool
     dont_save_future_data: StrictBool
+    byok_sync_modes: dict[str, StrictBool] | None = None
 
     if 'ConfigDict' in globals() and ConfigDict is not None:  # type: ignore[name-defined]
         model_config = ConfigDict(extra='forbid')  # type: ignore[assignment]

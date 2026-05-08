@@ -29,7 +29,7 @@ from sqlalchemy.exc import IntegrityError
 
 from restailor.db import SessionLocal, get_pii_key
 from perf.observability import RequestTimingMiddleware, install_sqlalchemy_timing
-from restailor.models import Job, JobOutput, User, UserBalance, EmailLog, CreditLedger, Charge
+from restailor.models import Job, JobOutput, User, UserBalance, EmailLog, CreditLedger, Charge, UserProviderKey, UserPreferences
 from restailor import schemas, crud
 from restailor import security as security_mod
 from restailor import auth as auth_dep
@@ -52,6 +52,14 @@ from restailor.privacy import should_persist_user_content
 from services.llm import abort_job, stream_model, StallBeforeFirstByte
 import stripe
 from services.pricing import load_price_map, quote_cost_usd, to_cents, apply_multiplier, is_known_model, get_model_rates
+from services.byok import (
+    SUPPORTED_PROVIDERS,
+    canonical_provider,
+    mask_key_preview,
+    provider_key_metadata,
+    resolve_byok_key,
+    store_runtime_secret,
+)
 import jwt as _jwt  # logging middleware token decode (non-critical)
 from services.money import format_usd
 import json
@@ -868,10 +876,19 @@ users_router = APIRouter(prefix="/users/me", tags=["users"])
 
 
 @users_router.get("/settings", response_model=schemas.UserSettings)
-async def get_my_settings(current_user: Annotated[User, Depends(auth_dep.get_current_user)]):
+async def get_my_settings(
+    current_user: Annotated[User, Depends(auth_dep.get_current_user)],
+    db: Annotated[Session, Depends(auth_dep.get_db)],
+):
+    prefs = db.get(UserPreferences, int(current_user.id))
+    settings = dict(getattr(prefs, "settings", None) or {})
+    byok_sync_modes = settings.get("byok_sync_modes")
+    if not isinstance(byok_sync_modes, dict):
+        byok_sync_modes = {}
     return schemas.UserSettings(
         public_profile=bool(getattr(current_user, "public_profile", False)),
         dont_save_future_data=bool(getattr(current_user, "dont_save_future_data", False)),
+        byok_sync_modes={str(k): bool(v) for k, v in byok_sync_modes.items()},
     )
 
 
@@ -888,6 +905,20 @@ async def put_my_settings(
     setattr(u, "public_profile", bool(body.public_profile))
     setattr(u, "dont_save_future_data", bool(body.dont_save_future_data))
     try:
+        prefs = db.get(UserPreferences, int(u.id))
+        settings = dict(getattr(prefs, "settings", None) or {})
+        if body.byok_sync_modes is not None:
+            settings["byok_sync_modes"] = {str(k): bool(v) for k, v in body.byok_sync_modes.items()}
+        saved_byok_sync_modes = settings.get("byok_sync_modes")
+        if not isinstance(saved_byok_sync_modes, dict):
+            saved_byok_sync_modes = {}
+        if prefs is None:
+            prefs = UserPreferences(user_id=int(u.id), settings=settings, version=int(settings.get("version") or 1))
+            db.add(prefs)
+        else:
+            prefs.settings = settings
+            prefs.version = int(settings.get("version") or getattr(prefs, "version", 1) or 1)
+            db.add(prefs)
         db.add(u)
         db.commit()
         db.refresh(u)
@@ -897,6 +928,7 @@ async def put_my_settings(
     return schemas.UserSettings(
         public_profile=bool(getattr(u, "public_profile", False)),
         dont_save_future_data=bool(getattr(u, "dont_save_future_data", False)),
+        byok_sync_modes={str(k): bool(v) for k, v in saved_byok_sync_modes.items()},
     )
 
 
@@ -2718,8 +2750,11 @@ async def diag_sse():
 
 # --- Minimal Streams test endpoint: NDJSON streaming for various providers ---
 @app.post("/streams/test")
-async def streams_test(request: Request):
-    """Proxy simple provider streams using existing keyring/env resolution.
+async def streams_test(
+    request: Request,
+    current_user: Annotated[schemas.User, Depends(auth_dep.get_current_user)] = None,  # type: ignore[assignment]
+):
+    """Proxy simple provider streams using authenticated BYOK credentials.
 
     Body: { provider, model, system, prompt, timeout }
     Returns: application/x-ndjson stream of {type: delta|event|done|error, ...}
@@ -2738,7 +2773,18 @@ async def streams_test(request: Request):
         timeout = 120
     if not provider or not model:
         raise HTTPException(status_code=400, detail="Missing provider or model")
-    from services.llm import stream_model  # uses keyring/env internally
+    db = SessionLocal()
+    try:
+        api_key = await _require_byok_key(
+            db,
+            request,
+            user_id=int(current_user.id),
+            provider=provider,
+            runtime_secret_id=str(body.get("runtime_secret_id") or "") or None,
+        )
+    finally:
+        db.close()
+    from services.llm import stream_model
     import uuid as _uuid
 
     timeouts = {
@@ -2760,6 +2806,7 @@ async def streams_test(request: Request):
                 timeouts=timeouts,  # type: ignore[arg-type]
                 stop_markers=[],
                 job_id=str(_uuid.uuid4()),
+                api_key=api_key,
             )
             async for chunk in agen:
                 txt = str(chunk or "")
@@ -6829,10 +6876,12 @@ class JobRequest(BaseModel):
     # Optional model selection; if omitted, the worker may use a default/fallback
     provider: str | None = None
     model_id: str | None = None
+    runtime_secret_id: str | None = None
     # Optional judge parameters to run judge in the same job
     do_judge: bool = False
     judge_provider: str | None = None
     judge_model_id: str | None = None
+    judge_runtime_secret_id: str | None = None
     # Optional source page indicator (non-PII), e.g., "Restailor" or "Model Benchmark"
     source_page: str | None = None
     # Optional explicit model lists for reproducibility (computed from user preferences)
@@ -7155,6 +7204,216 @@ def _fresh_balance_cents(db: Session, user_id: int) -> int:
     return 0 if cents < 0 else int(cents)
 
 
+_BUDGET_PRESET_CENTS = {500, 1000, 2500, 5000, 10000}
+
+
+class _BudgetAdjustRequest(BaseModel):
+    amount_usd: float
+    direction: Literal["add", "remove"]
+
+
+def _disabled_stripe_response() -> JSONResponse:
+    return JSONResponse(
+        status_code=403,
+        content={"ok": False, "code": "stripe_disabled", "message": "Stripe is disabled. Use Budget controls instead."},
+    )
+
+
+@app.get("/budget/summary")
+async def get_budget_summary(
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[schemas.User, Depends(auth_dep.get_current_user)] = None,  # type: ignore[assignment]
+    output_models: int | None = None,
+):
+    return await get_billing_summary(db=db, current_user=current_user, output_models=output_models)
+
+
+@app.post("/budget/credits/adjust")
+async def adjust_budget_credits(
+    body: _BudgetAdjustRequest,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[schemas.User, Depends(auth_dep.get_current_user)] = None,  # type: ignore[assignment]
+):
+    amount_cents = int(round(float(body.amount_usd) * 100))
+    if amount_cents not in _BUDGET_PRESET_CENTS:
+        raise HTTPException(status_code=400, detail="amount_not_allowed")
+    user_id = int(getattr(current_user, "id", 0))
+    if user_id <= 0:
+        raise HTTPException(status_code=401, detail="not_authenticated")
+    current_balance = _fresh_balance_cents(db, user_id)
+    if body.direction == "add":
+        delta = amount_cents
+    else:
+        delta = -min(amount_cents, current_balance)
+    ref = f"budget:self:{user_id}:{secrets.token_urlsafe(16)}"
+    try:
+        bal = db.get(UserBalance, user_id)
+        if bal is None:
+            bal = UserBalance(user_id=user_id, balance_cents=current_balance)
+            db.add(bal)
+            db.flush()
+        ledger = CreditLedger(
+            user_id=user_id,
+            delta_cents=int(delta),
+            type="adjust",
+            note=f"budget_{body.direction}",
+            provider_ref=ref,
+            is_test=bool(getattr(current_user, "is_test", False)),
+        )
+        db.add(ledger)
+        bal.balance_cents = max(0, int(current_balance) + int(delta))
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+    cents = _fresh_balance_cents(db, user_id)
+    breakdown = _get_balance_breakdown(db, user_id)
+    return {
+        "ok": True,
+        "balance": {
+            "balance_cents": cents,
+            "balance_usd": format_usd(cents),
+            "currency": "USD",
+            "purchased_balance_cents": breakdown["purchased_balance_cents"],
+            "trial_balance_cents": breakdown["trial_balance_cents"],
+        },
+    }
+
+
+class _ProviderKeyPutRequest(BaseModel):
+    api_key: str = Field(..., min_length=8)
+    storage_mode: str = "server"
+
+
+class _RuntimeSecretRequest(BaseModel):
+    provider: str
+    key: str = Field(..., min_length=8)
+    intended_use: str = "model_run"
+
+
+def _provider_rows_by_user(db: Session, user_id: int) -> dict[str, UserProviderKey]:
+    rows = db.execute(sa.select(UserProviderKey).where(UserProviderKey.user_id == int(user_id))).scalars().all()
+    return {str(r.provider): r for r in rows}
+
+
+@app.get("/users/me/provider-keys")
+async def list_provider_keys(
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[schemas.User, Depends(auth_dep.get_current_user)] = None,  # type: ignore[assignment]
+):
+    user_id = int(getattr(current_user, "id", 0))
+    rows = _provider_rows_by_user(db, user_id)
+    providers = ["anthropic", "gemini", "openai", "xai"]
+    return {"providers": [provider_key_metadata(rows.get(p), p) for p in providers]}
+
+
+@app.put("/users/me/provider-keys/{provider}")
+async def put_provider_key(
+    provider: str,
+    body: _ProviderKeyPutRequest,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[schemas.User, Depends(auth_dep.get_current_user)] = None,  # type: ignore[assignment]
+):
+    try:
+        provider_key = canonical_provider(provider)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="unsupported_provider")
+    if body.storage_mode != "server":
+        raise HTTPException(status_code=400, detail="server_sync_required")
+    user_id = int(getattr(current_user, "id", 0))
+    raw_key = str(body.api_key)
+    pii_key = get_pii_key()
+    encrypted = db.execute(
+        sa.select(sa.func.pgp_sym_encrypt(bindparam("api_key", value=raw_key), cast(bindparam("pg_key", value=pii_key), Text)))
+    ).scalar_one()
+    row = db.execute(
+        sa.select(UserProviderKey).where(UserProviderKey.user_id == user_id, UserProviderKey.provider == provider_key)
+    ).scalar_one_or_none()
+    if row is None:
+        row = UserProviderKey(user_id=user_id, provider=provider_key, key_enc=encrypted, key_tail=mask_key_preview(raw_key), storage_mode="server")
+        db.add(row)
+    else:
+        row.key_enc = encrypted
+        row.key_tail = mask_key_preview(raw_key)
+        row.storage_mode = "server"
+        row.updated_at = datetime.now(timezone.utc)
+    db.commit()
+    db.refresh(row)
+    return provider_key_metadata(row, provider_key)
+
+
+@app.delete("/users/me/provider-keys/{provider}")
+async def delete_provider_key(
+    provider: str,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[schemas.User, Depends(auth_dep.get_current_user)] = None,  # type: ignore[assignment]
+):
+    try:
+        provider_key = canonical_provider(provider)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="unsupported_provider")
+    user_id = int(getattr(current_user, "id", 0))
+    row = db.execute(
+        sa.select(UserProviderKey).where(UserProviderKey.user_id == user_id, UserProviderKey.provider == provider_key)
+    ).scalar_one_or_none()
+    if row is not None:
+        db.delete(row)
+        db.commit()
+    return provider_key_metadata(None, provider_key)
+
+
+@app.post("/byok/runtime-secrets")
+async def create_runtime_secret(
+    body: _RuntimeSecretRequest,
+    request: Request,
+    current_user: Annotated[schemas.User, Depends(auth_dep.get_current_user)] = None,  # type: ignore[assignment]
+):
+    try:
+        provider_key = canonical_provider(body.provider)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="unsupported_provider")
+    redis = getattr(request.app.state, "redis", None)
+    secret_id = await store_runtime_secret(
+        redis,
+        user_id=int(current_user.id),
+        provider=provider_key,
+        api_key=body.key,
+        intended_use=body.intended_use,
+    )
+    return {"runtime_secret_id": secret_id, "expires_in": 600}
+
+
+async def _require_byok_key(
+    db: Session,
+    request: Request,
+    *,
+    user_id: int,
+    provider: str | None,
+    runtime_secret_id: str | None,
+    intended_use: str = "model_run",
+) -> str:
+    try:
+        from restailor.test_flags import is_automated_test_run
+        if is_automated_test_run():
+            return "test-byok-key"
+    except Exception:
+        pass
+    try:
+        resolved = await resolve_byok_key(
+            db,
+            getattr(request.app.state, "redis", None),
+            user_id=int(user_id),
+            provider=str(provider or ""),
+            runtime_secret_id=runtime_secret_id,
+            intended_use=intended_use,
+        )
+        return resolved.api_key
+    except ValueError:
+        raise HTTPException(status_code=400, detail="unsupported_provider")
+    except PermissionError:
+        raise HTTPException(status_code=402, detail="missing_byok_key")
+
+
 @app.get("/pricing/estimate")
 async def get_pricing_estimate(
     request_type: str,
@@ -7261,6 +7520,21 @@ async def post_purchase_intent(
     body: _PurchaseIntent,
     current_user: Annotated[schemas.User, Depends(auth_dep.get_current_user)] = None,  # type: ignore[assignment]
 ):
+    return _disabled_stripe_response()
+
+
+@app.post("/budget/purchase-intent")
+async def post_budget_purchase_intent(
+    body: _PurchaseIntent,
+    current_user: Annotated[schemas.User, Depends(auth_dep.get_current_user)] = None,  # type: ignore[assignment]
+):
+    return _disabled_stripe_response()
+
+
+async def _legacy_post_purchase_intent_disabled(
+    body: _PurchaseIntent,
+    current_user: Annotated[schemas.User, Depends(auth_dep.get_current_user)] = None,  # type: ignore[assignment]
+):
     logger.info(f"Purchase intent requested: user_id={current_user.id}, amount=${body.amount_usd}")
     allowed = {5, 10, 25, 50, 100}
     amt = int(round(float(body.amount_usd)))
@@ -7334,6 +7608,7 @@ async def stripe_webhook(request: Request):
       - Prefer object.metadata.user_id (int), else metadata.email/username to look up.
       - If mapping fails, 202 Accepted with no-op.
     """
+    return JSONResponse(status_code=200, content={"ok": True, "message": "stripe_disabled"})
     stripe_cfg = CONFIG.get("stripe", {}) if isinstance(CONFIG.get("stripe", {}), dict) else {}
     secret = (os.getenv("STRIPE_WEBHOOK_SECRET") or stripe_cfg.get("webhook_secret") or "").strip()
 
@@ -7531,6 +7806,43 @@ def _apply_stripe_refund(session: Session, *, user_id: int, amount_cents: int, p
     )
 
 
+_ACTIVE_JOB_STALE_AFTER_MINUTES = int((CONFIG.get("limits", {}) or {}).get("active_job_stale_after_minutes", 360) or 360)
+
+
+def _retire_stale_active_jobs(db: Session, *, user_id: int | None = None, client_id: str | None = None) -> int:
+    """Fail non-terminal jobs that are old enough to be operationally stale."""
+    if _ACTIVE_JOB_STALE_AFTER_MINUTES <= 0:
+        return 0
+    terminal = ("completed", "failed")
+    now = datetime.now(timezone.utc)
+    cutoff = now - timedelta(minutes=_ACTIVE_JOB_STALE_AFTER_MINUTES)
+    where = [~Job.status.in_(terminal), Job.updated_at < cutoff]
+    if user_id is not None:
+        where.append(Job.user_id == int(user_id))
+    if client_id:
+        where.append(Job.client_id == client_id)
+    result = db.execute(
+        sa.update(Job)
+        .where(*where)
+        .values(status="failed", updated_at=now)
+        .execution_options(synchronize_session=False)
+    )
+    count = int(result.rowcount or 0)
+    if count:
+        db.commit()
+        try:
+            logger.warning(
+                "stale_active_jobs_retired: count=%s user_id=%s client_id=%s stale_after_minutes=%s",
+                count,
+                user_id,
+                client_id,
+                _ACTIVE_JOB_STALE_AFTER_MINUTES,
+            )
+        except Exception:
+            pass
+    return count
+
+
 def _ensure_no_active_job(db: Session, client_id: str) -> None:
     """Guard per-client concurrency using DB-visible non-terminal jobs.
 
@@ -7538,6 +7850,7 @@ def _ensure_no_active_job(db: Session, client_id: str) -> None:
     """
     # Non-terminal statuses
     terminal = ("completed", "failed")
+    _retire_stale_active_jobs(db, client_id=client_id)
     q = db.execute(
         select(func.count()).select_from(Job).where((Job.client_id == client_id) & (~Job.status.in_(terminal)))
     ).scalar() or 0
@@ -7560,12 +7873,13 @@ def _ensure_user_active_job_cap(db: Session, user_id: int | None, cap: int) -> N
     if not user_id:
         return
     terminal = ("completed", "failed")
+    retired = _retire_stale_active_jobs(db, user_id=int(user_id))
     q = db.execute(
         select(func.count()).select_from(Job).where((Job.user_id == int(user_id)) & (~Job.status.in_(terminal)))
     ).scalar() or 0
     if int(q) >= int(cap):
         try:
-            logger.info("user_active_cap_block: user_id=%s active=%s cap=%s", user_id, q, cap)
+            logger.info("user_active_cap_block: user_id=%s active=%s cap=%s retired_stale=%s", user_id, q, cap, retired)
         except Exception:
             pass
         raise HTTPException(status_code=429, detail=f"Too many active jobs (limit {cap}). Please wait for existing jobs to finish.")
@@ -7601,11 +7915,26 @@ async def create_job(
 ) -> JobResponse:
     if gate.replay:
         return JobResponse(**gate.response)  # type: ignore[arg-type]
-    _ensure_user_active_job_cap(db, getattr(current_user, "id", None), _USER_ACTIVE_JOB_CAP)
     # Use normalized texts from gate
     req.resume_text = gate.resume_text or req.resume_text
     req.jd_text = gate.jd_text or req.jd_text
     client_id = _extract_client_id(request, int(getattr(current_user, "id", 0)) or None)
+    await _require_byok_key(
+        db,
+        request,
+        user_id=int(current_user.id),
+        provider=req.provider,
+        runtime_secret_id=req.runtime_secret_id,
+    )
+    if req.do_judge:
+        await _require_byok_key(
+            db,
+            request,
+            user_id=int(current_user.id),
+            provider=req.judge_provider,
+            runtime_secret_id=req.judge_runtime_secret_id or req.runtime_secret_id,
+        )
+    _ensure_user_active_job_cap(db, getattr(current_user, "id", None), _USER_ACTIVE_JOB_CAP)
     # Respect configured per-user concurrency: if allowing >1, avoid DB partial-unique index by storing NULL client_id
     conc_cfg = (CONFIG.get("limits", {}).get("concurrency", {}) if isinstance(CONFIG.get("limits", {}), dict) else {})
     per_user_cap = int(conc_cfg.get("per_user", 1) or 1)
@@ -7896,6 +8225,7 @@ async def create_job(
         str(job.id),
         req.provider,
         req.model_id,
+        req.runtime_secret_id,
     )
     # If judge requested, enqueue judge_only after tailoring (separate tasks now)
     if ok and req.do_judge:
@@ -7906,6 +8236,7 @@ async def create_job(
                 str(job.id),
                 req.judge_provider,
                 req.judge_model_id,
+                req.judge_runtime_secret_id or req.runtime_secret_id,
             )
         except Exception as ex:
             logger.debug("jobs.create: enqueue judge_only failed: %s", ex)
@@ -8028,6 +8359,7 @@ class BenchmarkRankRequest(BaseModel):
     candidates: dict[str, str]
     judge_provider: str
     judge_model_id: str
+    runtime_secret_id: str | None = None
     # Optional source page indicator
     source_page: str | None = "Model Benchmark"
 
@@ -8050,6 +8382,13 @@ async def start_benchmark_ranking(
 ) -> JobResponse:
     if gate.replay:
         return JobResponse(**gate.response)  # type: ignore[arg-type]
+    await _require_byok_key(
+        db,
+        request,
+        user_id=int(current_user.id),
+        provider=body.judge_provider,
+        runtime_secret_id=body.runtime_secret_id,
+    )
     # Precondition: require that the user already has at least one completed tailor job (no auto-tailor here)
     try:
         if getattr(current_user, "id", None):
@@ -8355,6 +8694,7 @@ async def start_benchmark_ranking(
             str(job.id),
             body.judge_provider,
             body.judge_model_id,
+            body.runtime_secret_id,
         )
         asyncio.create_task(_trigger_cloud_run_worker_job())
     else:
@@ -8365,6 +8705,7 @@ async def start_benchmark_ranking(
             {},
             body.judge_provider,
             body.judge_model_id,
+            body.runtime_secret_id,
         )
         asyncio.create_task(_trigger_cloud_run_worker_job())
     # Associate this ranking job to a run if provided by the caller
@@ -8506,6 +8847,7 @@ class FitRequest(BaseModel):
     jd_text: str
     provider: str
     model_id: str
+    runtime_secret_id: str | None = None
     # Optional source page indicator
     source_page: str | None = None
     # Optional explicit model list for reproducibility
@@ -8524,10 +8866,17 @@ async def create_fit_job(
 ) -> JobResponse:
     if gate.replay:
         return JobResponse(**gate.response)  # type: ignore[arg-type]
-    _ensure_user_active_job_cap(db, getattr(current_user, "id", None), _USER_ACTIVE_JOB_CAP)
     req.resume_text = gate.resume_text or req.resume_text
     req.jd_text = gate.jd_text or req.jd_text
     client_id = _extract_client_id(request)
+    await _require_byok_key(
+        db,
+        request,
+        user_id=int(current_user.id),
+        provider=req.provider,
+        runtime_secret_id=req.runtime_secret_id,
+    )
+    _ensure_user_active_job_cap(db, getattr(current_user, "id", None), _USER_ACTIVE_JOB_CAP)
     # Respect configured per-user concurrency: if allowing >1, avoid DB partial-unique index by storing NULL client_id
     conc_cfg = (CONFIG.get("limits", {}).get("concurrency", {}) if isinstance(CONFIG.get("limits", {}), dict) else {})
     per_user_cap = int(conc_cfg.get("per_user", 1) or 1)
@@ -8724,6 +9073,7 @@ async def create_fit_job(
                 str(db_job.id),
                 req.provider,
                 req.model_id,
+                req.runtime_secret_id,
             )
             asyncio.create_task(_trigger_cloud_run_worker_job())
             enq_ok = True
@@ -8758,6 +9108,7 @@ class JudgeOnlyRequest(BaseModel):
     candidate_text: str
     judge_provider: str
     judge_model_id: str
+    runtime_secret_id: str | None = None
     # Optional source page indicator
     source_page: str | None = None
     # Optional total selected judge models for multi-model batch pricing accounting
@@ -8784,6 +9135,13 @@ async def create_judge_only_job(
     req.resume_text = gate.resume_text or req.resume_text
     req.jd_text = gate.jd_text or req.jd_text
     client_id = _extract_client_id(request)
+    await _require_byok_key(
+        db,
+        request,
+        user_id=int(current_user.id),
+        provider=req.judge_provider,
+        runtime_secret_id=req.runtime_secret_id,
+    )
     # Respect configured per-user concurrency: if allowing >1, avoid DB partial-unique index by storing NULL client_id
     conc_cfg = (CONFIG.get("limits", {}).get("concurrency", {}) if isinstance(CONFIG.get("limits", {}), dict) else {})
     per_user_cap = int(conc_cfg.get("per_user", 1) or 1)
@@ -9021,6 +9379,7 @@ async def create_judge_only_job(
                 str(job.id),
                 req.judge_provider,
                 req.judge_model_id,
+                req.runtime_secret_id,
             )
             asyncio.create_task(_trigger_cloud_run_worker_job())
             enq_ok = True
@@ -10947,6 +11306,7 @@ class StreamQueryParams(BaseModel):
     model_id: str
     role: str = "tailor"  # tailor | fit | judge
     temperature: float | None = None
+    runtime_secret_id: str | None = None
 
 
 @limiter.limit(_rate_str(2, 20), key_func=_key_by_token_or_client_or_ip)
@@ -10961,6 +11321,7 @@ async def stream_job_tokens(
     role: str = "tailor",
     temperature: float | None = None,
     access_token: str | None = None,
+    runtime_secret_id: str | None = None,
     current_user: Annotated[schemas.User, Depends(auth_dep.get_current_user)] = None,  # type: ignore[assignment]
 ):
     """Stream provider tokens via SSE and persist the final output on completion.
@@ -10997,6 +11358,13 @@ async def stream_job_tokens(
     model = (model_id or "").strip()
     if not prov or not model:
         raise HTTPException(status_code=400, detail="Missing provider or model_id")
+    api_key = await _require_byok_key(
+        db,
+        request,
+        user_id=int(current_user.id),
+        provider=prov,
+        runtime_secret_id=runtime_secret_id,
+    )
 
     # Set job to processing if not terminal
     try:
@@ -11070,6 +11438,7 @@ async def stream_job_tokens(
             timeouts=timeouts,  # type: ignore[arg-type]
             stop_markers=stops,
             job_id=str(job_id),
+            api_key=api_key,
         )
         wrapped = clamp_stream(
             role=(role or "tailor"),

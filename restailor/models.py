@@ -107,6 +107,39 @@ class UserPreferences(Base):
     )
 
 
+class UserProviderKey(Base):
+    __tablename__ = "user_provider_keys"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    provider: Mapped[str] = mapped_column(String(length=32), nullable=False)
+    key_enc: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
+    key_tail: Mapped[str] = mapped_column(String(length=16), nullable=False)
+    storage_mode: Mapped[str] = mapped_column(String(length=32), nullable=False, default="server", server_default="server")
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
+        server_default=sa.text("now()"),
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+        server_default=sa.text("now()"),
+    )
+
+    __table_args__ = (
+        sa.UniqueConstraint("user_id", "provider", name="uq_user_provider_keys_user_provider"),
+        Index("ix_user_provider_keys_user_provider", "user_id", "provider"),
+    )
+
+
 class Job(Base):
     __tablename__ = "jobs"
 
@@ -618,5 +651,4 @@ class SystemSettings(Base):
         server_default=sa.text("now()"),
         server_onupdate=sa.text("now()"),
     )
-
 

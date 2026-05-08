@@ -51,7 +51,11 @@ CHANGE SNAPSHOT (2025-09-11)
 | GET | /pricing/median | none | median of last 100 |
 | GET | /pricing/average | none | trimmed average |
 | GET | /users/me/balance | bearer | user balance |
-| GET | /billing/summary | bearer | balance + rates + averages |
+| GET | /budget/summary | bearer | Budget balance + provider rates + averages |
+| GET | /billing/summary | bearer | compatibility alias for Budget summary |
+| POST | /budget/credits/adjust | bearer | add/remove preset Budget credits |
+| GET/PUT/DELETE | /users/me/provider-keys | bearer | BYOK provider-key metadata and encrypted server-synced key storage |
+| POST | /byok/runtime-secrets | bearer | short-lived local-only key handoff for a model run |
 
 ## Admin Credits
 

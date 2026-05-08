@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import dynamic from "next/dynamic";
+import Script from "next/script";
 import "./globals.css";
 import Sidebar from "@/components/chrome/Sidebar";
 import FingerprintHelper from "@/components/chrome/FingerprintHelper";
@@ -88,33 +89,24 @@ export default async function RootLayout({
 	return (
 		<html lang="en" suppressHydrationWarning style={{ backgroundColor: "#0b0e14", color: "#e2e8f0" }}>
 			<head>
-				<script
-					suppressHydrationWarning
-					dangerouslySetInnerHTML={{
-						__html: `(()=>{try{if(typeof window==='undefined')return;window.__rtEarlyReload={iso:new Date().toISOString(),dateNow:Date.now(),timeOrigin:performance.timeOrigin,now:performance.now(),readyState:document.readyState,pathname:location.pathname,search:location.search,nav:(()=>{try{var n=performance.getEntriesByType('navigation')[0];return n?{type:n.type,requestStart:Math.round(n.requestStart),responseStart:Math.round(n.responseStart),responseEnd:Math.round(n.responseEnd)}:null}catch{return null}})()};}catch{}})();`,
-					}}
-				/>
 				<meta name="viewport" content="width=device-width, initial-scale=1" />
 				{googleAnalyticsId ? (
 					<>
-						<script async src={`https://www.googletagmanager.com/gtag/js?id=${googleAnalyticsId}`}></script>
-						<script
-							dangerouslySetInnerHTML={{
-								__html: `
+						<Script id="google-tag-manager" src={`https://www.googletagmanager.com/gtag/js?id=${googleAnalyticsId}`} strategy="afterInteractive" />
+						<Script id="google-analytics-config" strategy="afterInteractive">{`
 									window.dataLayer = window.dataLayer || [];
 									function gtag(){dataLayer.push(arguments);}
 									gtag('js', new Date());
 									gtag('config', ${JSON.stringify(googleAnalyticsId)});
-								`,
-							}}
-						/>
+								`}</Script>
 					</>
 				) : null}
 				{/* Structured data for Google search */}
-				<script
+				<Script
+					id="structured-data"
 					type="application/ld+json"
-					dangerouslySetInnerHTML={{
-						__html: JSON.stringify({
+					strategy="beforeInteractive"
+					dangerouslySetInnerHTML={{ __html: JSON.stringify({
 							"@context": "https://schema.org",
 							"@type": "WebApplication",
 							"name": siteName,
@@ -133,22 +125,17 @@ export default async function RootLayout({
 								"Multiple AI models",
 								"Application tracking"
 							]
-						})
-					}}
+						}) }}
 				/>
 			</head>
 			<body className="min-h-screen bg-[#0b0e14] text-slate-200 md:overflow-hidden m-0 p-0" style={{ backgroundColor: "#0b0e14", color: "#e2e8f0" }}>
+				<Script id="rt-early-reload" strategy="beforeInteractive">{`(()=>{try{if(typeof window==='undefined')return;window.__rtEarlyReload={iso:new Date().toISOString(),dateNow:Date.now(),timeOrigin:performance.timeOrigin,now:performance.now(),readyState:document.readyState,pathname:location.pathname,search:location.search,nav:(()=>{try{var n=performance.getEntriesByType('navigation')[0];return n?{type:n.type,requestStart:Math.round(n.requestStart),responseStart:Math.round(n.responseStart),responseEnd:Math.round(n.responseEnd)}:null}catch{return null}})()};}catch{}})();`}</Script>
 				{/* Inject server-provided frontend config (rt_debug_ui) so client can enable HUD/logs without URL/localStorage */}
-				<script
-					suppressHydrationWarning
-					dangerouslySetInnerHTML={{ __html: `(()=>{try{if(typeof window==='undefined')return;window.__rtConfig={rt_debug_ui:${rtDebugUi ? 'true' : 'false'}};}catch{}})();` }}
-				/>
+				<Script id="rt-config" strategy="beforeInteractive">{`(()=>{try{if(typeof window==='undefined')return;window.__rtConfig={rt_debug_ui:${rtDebugUi ? 'true' : 'false'}};}catch{}})();`}</Script>
 				{/* Client-only debug HUD overlay (gated via rtDebug flag) */}
 				<RtDebugHudClient />
 				{/* Global auth logout listener that runs before page components mount to nuke PII inputs */}
-			<script
-				dangerouslySetInnerHTML={{ __html: `(()=>{try{if(typeof window==='undefined')return;window.addEventListener('rt-auth',function(e){try{var d=e&&e.detail||{};if(String(d.state||'').toLowerCase()==='logged-out'){/* PII scope: ONLY resume/jd inputs + judge ephemeral cache (outputs now managed via database snapshots) */var ks=['__rt_judge_cache_ephemeral','__rt_resume_text','__rt_jd_text','__rt_resume_ts','__rt_jd_ts'];for(var i=0;i<ks.length;i++){try{localStorage.removeItem(ks[i]);}catch{}}}}catch{}});}catch{}})();` }}
-			/>
+			<Script id="rt-auth-pii-clear" strategy="beforeInteractive">{`(()=>{try{if(typeof window==='undefined')return;window.addEventListener('rt-auth',function(e){try{var d=e&&e.detail||{};if(String(d.state||'').toLowerCase()==='logged-out'){/* PII scope: ONLY resume/jd inputs + judge ephemeral cache (outputs now managed via database snapshots) */var ks=['__rt_judge_cache_ephemeral','__rt_resume_text','__rt_jd_text','__rt_resume_ts','__rt_jd_ts'];for(var i=0;i<ks.length;i++){try{localStorage.removeItem(ks[i]);}catch{}}}}catch{}});}catch{}})();`}</Script>
 			{/* Global helpers */}
 			<FingerprintHelper />
 			<AuthCookieSync />
