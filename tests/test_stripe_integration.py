@@ -14,7 +14,7 @@ def test_purchase_intent_is_disabled_for_normal_users():
 
     response = client.post(
         "/billing/purchase-intent",
-        headers={"Authorization": f"Bearer {token}"},
+        headers={"Authorization": f"Bearer {token}", "Origin": "http://localhost:3000"},
         json={"amount_usd": 10},
     )
 
