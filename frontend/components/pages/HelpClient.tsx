@@ -41,37 +41,33 @@ export default function HelpClient() {
 					<div>
 						<h3 className="font-semibold text-lg mb-2">What is Restailor?</h3>
 						<p className="text-slate-300">
-							Restailor is an AI-powered resume tailoring service that helps you customize your resume for any job application. 
-							Our advanced AI analyzes job descriptions and optimizes your resume to highlight the most relevant skills and experience.
+							Restailor is a free, open-source resume tailoring tool that helps you customize your resume for any job application.
+							It is hosted for people to use and enjoy, while model runs use your own AI provider API key.
 						</p>
 					</div>
 
 					<div className="bg-amber-900/20 border border-amber-700/50 rounded-lg p-4">
-						<h3 className="font-semibold text-lg mb-3 text-amber-200">🎁 Free Trial Details</h3>
+						<h3 className="font-semibold text-lg mb-3 text-amber-200">Free BYOK Model</h3>
 						<ul className="space-y-2 text-slate-300">
 							<li className="flex items-start gap-2">
-								<span className="text-green-400 mt-1">✓</span>
-								<span><strong>Free credits</strong> to get you started</span>
+								<span className="text-green-400 mt-1">-</span>
+								<span><strong>Free to use:</strong> Restailor does not charge you for access.</span>
 							</li>
 							<li className="flex items-start gap-2">
-								<span className="text-green-400 mt-1">✓</span>
-								<span><strong>How to claim:</strong> Navigate to Budget → Click "Claim Free Trial"</span>
+								<span className="text-green-400 mt-1">-</span>
+								<span><strong>Bring your own key:</strong> Add your provider API key in Settings before running models.</span>
 							</li>
 							<li className="flex items-start gap-2">
-								<span className="text-green-400 mt-1">✓</span>
-								<span><strong>Available models:</strong> Access to select AI models during trial</span>
+								<span className="text-green-400 mt-1">-</span>
+								<span><strong>No markup:</strong> Provider prices are shown for planning; Restailor does not add a fee.</span>
 							</li>
 							<li className="flex items-start gap-2">
-								<span className="text-green-400 mt-1">✓</span>
-								<span><strong>No credit card required</strong> to start</span>
+								<span className="text-green-400 mt-1">-</span>
+								<span><strong>Budget is local accounting:</strong> Use Budget credits as a spending guardrail, not as payment to Restailor.</span>
 							</li>
 							<li className="flex items-start gap-2">
-								<span className="text-green-400 mt-1">✓</span>
-								<span><strong>One-time offer</strong> per account</span>
-							</li>
-							<li className="flex items-start gap-2">
-								<span className="text-amber-400 mt-1">⚠</span>
-								<span><strong>After trial:</strong> Add credits to continue using premium features</span>
+								<span className="text-green-400 mt-1">-</span>
+								<span><strong>Open source:</strong> The project can be inspected, self-hosted, and improved by the community.</span>
 							</li>
 						</ul>
 					</div>
@@ -149,19 +145,19 @@ export default function HelpClient() {
 						<h3 className="font-semibold text-lg mb-2">Budget</h3>
 						<div className="space-y-3 text-slate-300">
 							<div>
-								<h4 className="font-semibold text-amber-200">Free Trial</h4>
+								<h4 className="font-semibold text-amber-200">Free BYOK Usage</h4>
 								<ul className="list-disc list-inside space-y-1 ml-4 mt-1">
-									<li>Navigate to Budget page to claim your free trial credits</li>
-									<li>Trial credits work with select AI models</li>
-									<li>One-time offer per account - use them wisely!</li>
-									<li>No payment information required to start</li>
+									<li>Restailor is free to use and does not sell model credits</li>
+									<li>Model runs require your own provider API key from Settings</li>
+									<li>Your provider may charge you directly based on its own rates</li>
+									<li>Budget helps you set a local usage guardrail before model runs</li>
 								</ul>
 							</div>
 							<div>
-								<h4 className="font-semibold">Credit System</h4>
+								<h4 className="font-semibold">Budget System</h4>
 								<ul className="list-disc list-inside space-y-1 ml-4 mt-1">
-									<li>Credits are deducted based on the AI model used</li>
-									<li>Different models have different pricing</li>
+									<li>Budget credits are deducted based on provider-cost-equivalent estimates</li>
+									<li>Different models have different provider prices</li>
 									<li>Your balance is shown in the sidebar</li>
 									<li>Add or remove Budget credits anytime from the Budget page</li>
 								</ul>
@@ -224,17 +220,17 @@ export default function HelpClient() {
 						<h3 className="font-semibold text-lg mb-2">Single vs. Multi-Model Mode</h3>
 						<ul className="list-disc list-inside space-y-1 text-slate-300 ml-4">
 							<li><strong>Single-model mode:</strong> Use one model per role (faster, more predictable)</li>
-							<li><strong>Multi-model mode:</strong> Use multiple models per role (comprehensive analysis, higher cost)</li>
+							<li><strong>Multi-model mode:</strong> Use multiple models per role (more comprehensive, uses more of your provider budget)</li>
 						</ul>
 					</div>
 
 					<div>
-						<h3 className="font-semibold text-lg mb-2">Trial Model Restrictions</h3>
+						<h3 className="font-semibold text-lg mb-2">Provider Key Access</h3>
 						<p className="text-slate-300 mb-2">
-							Free trial credits are limited to specific AI models. These trial-eligible models provide excellent results while keeping costs manageable.
+							Restailor can only run models for providers where you have supplied a usable API key. Add keys in Settings, then choose the matching models in the sidebar.
 						</p>
 						<p className="text-amber-300">
-							<strong>Note:</strong> Premium models require adding Budget credits after your trial ends.
+							<strong>Note:</strong> Restailor does not fall back to a platform key for normal user runs.
 						</p>
 					</div>
 
@@ -257,7 +253,7 @@ export default function HelpClient() {
 					<div>
 						<h3 className="font-semibold text-lg mb-2">Creating Your Account</h3>
 						<p className="text-slate-300">
-							Sign up with your email and password to get started. No credit card required to create an account or claim your free trial.
+							Sign up with your email and password to save history, preferences, security settings, and server-synced BYOK metadata. No payment card is required by Restailor.
 						</p>
 					</div>
 
@@ -272,11 +268,11 @@ export default function HelpClient() {
 					</div>
 
 					<div>
-						<h3 className="font-semibold text-lg mb-2">Trial vs. Paid Accounts</h3>
+						<h3 className="font-semibold text-lg mb-2">Free Hosted Use and BYOK</h3>
 						<ul className="list-disc list-inside space-y-1 text-slate-300 ml-4">
-							<li><strong>Trial accounts:</strong> Free credits, limited to trial-eligible models</li>
-							<li><strong>BYOK accounts:</strong> Access to all provider models, no restrictions</li>
-							<li>Seamlessly transition from trial to paid by adding credits</li>
+							<li><strong>Restailor access:</strong> Free to use on the hosted site</li>
+							<li><strong>Model execution:</strong> Requires your own provider API key</li>
+							<li><strong>Budget credits:</strong> Local usage controls, not money paid to Restailor</li>
 						</ul>
 					</div>
 
@@ -360,21 +356,21 @@ export default function HelpClient() {
 							<div>
 								<h4 className="font-semibold text-amber-300">Credits not deducting correctly</h4>
 								<p className="text-slate-300">
-									Refresh the page to see updated balance. If the issue persists, contact support with details about the job that ran.
+									Refresh the page to see the latest Budget balance. If the issue persists, contact support with details about the job that ran.
 								</p>
 							</div>
 
 							<div>
-								<h4 className="font-semibold text-amber-300">"Trial already claimed"</h4>
+								<h4 className="font-semibold text-amber-300">"Missing provider API key"</h4>
 								<p className="text-slate-300">
-									Free trial is a one-time offer per account. If you've already claimed it, you'll need to add Budget credits to continue using the service.
+									Add a BYOK provider key in Settings, then run the model again. Restailor needs your key to call the selected AI provider.
 								</p>
 							</div>
 
 							<div>
-								<h4 className="font-semibold text-amber-300">Trial models not available</h4>
+								<h4 className="font-semibold text-amber-300">Model not available</h4>
 								<p className="text-slate-300">
-									Some provider models are not available with trial credits. Claim your trial on the Budget page, or add Budget credits to access all models.
+									Some models require a matching provider key. Check Settings for your saved keys and choose a model from a provider you have configured.
 								</p>
 							</div>
 
@@ -394,7 +390,7 @@ export default function HelpClient() {
 							<div>
 								<h4 className="font-semibold text-red-300">"Balance insufficient" / 402 Payment Required</h4>
 								<p className="text-slate-300">
-									You don't have enough credits for the selected models. Add credits from the Budget page or switch to less expensive models.
+									Your local Budget balance is lower than the estimated provider-cost-equivalent usage for the selected models. Add Budget credits as a guardrail adjustment or switch to less expensive models.
 								</p>
 							</div>
 
@@ -442,10 +438,10 @@ export default function HelpClient() {
 					</div>
 
 					<div>
-						<h3 className="font-semibold text-lg mb-2">Maximizing Your Free Trial</h3>
+						<h3 className="font-semibold text-lg mb-2">Getting More from BYOK</h3>
 						<ul className="list-disc list-inside space-y-1 text-slate-300 ml-4">
 							<li>Start with your most important job applications</li>
-							<li>Use trial-eligible models to conserve credits</li>
+							<li>Use lower-cost provider models for early drafts and higher-cost models for final passes</li>
 							<li>Review and refine your master resume before running multiple jobs</li>
 							<li>Experiment with different model combinations to find what works best</li>
 							<li>Save your tailored resumes for future reference</li>
@@ -455,7 +451,7 @@ export default function HelpClient() {
 					<div>
 						<h3 className="font-semibold text-lg mb-2">Optimizing Credit Usage</h3>
 						<ul className="list-disc list-inside space-y-1 text-slate-300 ml-4">
-							<li>Choose models based on job importance (premium for top choices)</li>
+							<li>Choose models based on job importance and your provider's rates</li>
 							<li>Use faster models for quick iterations and refinement</li>
 							<li>Single-model mode uses fewer credits than multi-model</li>
 							<li>Review history to avoid re-running similar jobs</li>
@@ -465,11 +461,11 @@ export default function HelpClient() {
 					<div>
 						<h3 className="font-semibold text-lg mb-2">Security Recommendations</h3>
 						<ul className="list-disc list-inside space-y-1 text-slate-300 ml-4">
-							<li>Enable 2FA to protect your account and credits</li>
+							<li>Enable 2FA to protect your account, history, and saved provider-key metadata</li>
 							<li>Use a strong, unique password</li>
 							<li>Review trusted devices periodically</li>
 							<li>Log out on shared computers</li>
-							<li>Monitor your credit balance for unexpected changes</li>
+							<li>Monitor your Budget balance and provider account for unexpected usage</li>
 						</ul>
 					</div>
 				</div>
@@ -483,42 +479,42 @@ export default function HelpClient() {
 					<div>
 						<h4 className="font-semibold text-amber-300">How do I get started for free?</h4>
 						<p className="text-slate-300">
-							Create an account, then navigate to the Budget page and click "Claim Free Trial" to receive your trial credits. No credit card required!
+							Create an account, add your provider API key in Settings, and use Budget to set a local usage guardrail. Restailor does not require a payment card.
 						</p>
 					</div>
 
 					<div>
-						<h4 className="font-semibold text-amber-300">What's included in the free trial?</h4>
+						<h4 className="font-semibold text-amber-300">What is included for free?</h4>
 						<p className="text-slate-300">
-							The free trial includes credits to process several resume tailoring jobs using select AI models. You'll have access to all core features.
+							The hosted app, resume tailoring workflow, application history, analytics, and Budget tools are free to use. AI provider calls run through your own provider key.
 						</p>
 					</div>
 
 					<div>
-						<h4 className="font-semibold text-amber-300">Can I claim the trial multiple times?</h4>
+						<h4 className="font-semibold text-amber-300">Do I buy credits from Restailor?</h4>
 						<p className="text-slate-300">
-							No, the free trial is a one-time offer per account. Once claimed, you'll need to purchase additional credits to continue using the service.
+							No. Budget credits are a local accounting and usage-control tool. They are not purchased from Restailor and do not replace your provider's billing.
 						</p>
 					</div>
 
 					<div>
-						<h4 className="font-semibold text-amber-300">What happens when my trial runs out?</h4>
+						<h4 className="font-semibold text-amber-300">What happens when my Budget runs out?</h4>
 						<p className="text-slate-300">
-							You'll need to add credits to continue tailoring resumes. Navigate to the Budget page to purchase more credits at any time.
+							Model runs are blocked until you add more local Budget credits or choose less expensive models. This is a guardrail inside Restailor, not a payment prompt.
 						</p>
 					</div>
 
 					<div>
-						<h4 className="font-semibold text-amber-300">How is pricing calculated?</h4>
+						<h4 className="font-semibold text-amber-300">How is Budget usage calculated?</h4>
 						<p className="text-slate-300">
-							Different AI models have different costs per use. The total cost is calculated based on which models you select for fit analysis, tailoring, and judging. Your balance is always visible in the sidebar.
+							Different AI models have different provider prices. Restailor estimates provider-cost-equivalent usage based on the models you select for fit analysis, tailoring, and judging. Your Budget balance is always visible in the sidebar.
 						</p>
 					</div>
 
 					<div>
-						<h4 className="font-semibold text-amber-300">Can I get a refund?</h4>
+						<h4 className="font-semibold text-amber-300">Who charges me for model usage?</h4>
 						<p className="text-slate-300">
-							Contact support at {supportText} to discuss refund requests. We handle these on a case-by-case basis.
+							Your AI provider may charge your provider account according to its own terms and rates. Restailor does not add a markup or process model payments.
 						</p>
 					</div>
 
@@ -544,16 +540,16 @@ export default function HelpClient() {
 					</div>
 
 					<div>
-						<h4 className="font-semibold text-amber-300">What payment methods do you accept?</h4>
+						<h4 className="font-semibold text-amber-300">What provider keys can I use?</h4>
 						<p className="text-slate-300">
-							We accept major credit cards and use your own provider API key; Stripe checkout is disabled.
+							Use the providers available in Settings. Current BYOK rows match the providers Restailor can call for normal model runs.
 						</p>
 					</div>
 
 					<div>
 						<h4 className="font-semibold text-amber-300">How do I cancel my account?</h4>
 						<p className="text-slate-300">
-							There's no subscription to cancel - you only manage Budget credits as you use them. To permanently delete your account, go to Settings and use the "Delete my account" option.
+							There is no Restailor subscription to cancel. To permanently delete your account, go to Settings and use the "Delete my account" option.
 						</p>
 					</div>
 				</div>
@@ -616,7 +612,7 @@ export default function HelpClient() {
 					<div>
 						<h3 className="font-semibold text-lg mb-2">Budget Inquiries</h3>
 						<p className="text-slate-300">
-							For questions about charges, refunds, or payment issues, contact us at {supportText} with your account email.
+							For questions about Budget accounting, provider-key setup, or unexpected usage estimates, contact us at {supportText} with your account email.
 						</p>
 					</div>
 				</div>
@@ -628,12 +624,12 @@ export default function HelpClient() {
 			content: (
 				<div className="space-y-4">
 					<div>
-						<h3 className="font-semibold text-lg mb-2">Getting the Most from Trial Credits</h3>
+						<h3 className="font-semibold text-lg mb-2">Getting the Most from BYOK</h3>
 						<ul className="list-disc list-inside space-y-1 text-slate-300 ml-4">
-							<li>Prepare a well-formatted master resume before claiming your trial</li>
-							<li>Focus trial credits on your top job applications</li>
+							<li>Prepare a well-formatted master resume before running model calls</li>
+							<li>Focus higher-cost provider models on your top job applications</li>
 							<li>Test different models to find your preferred balance of speed/quality</li>
-							<li>Save outputs immediately - history is preserved but credits aren't refunded for re-runs</li>
+							<li>Save outputs immediately - history is preserved, but re-runs still use provider tokens</li>
 							<li>Read the AI's fit analysis carefully to improve your master resume</li>
 						</ul>
 					</div>
@@ -659,7 +655,7 @@ export default function HelpClient() {
 					</div>
 
 					<div>
-						<h3 className="font-semibold text-lg mb-2">Maximizing Value from Each Credit</h3>
+						<h3 className="font-semibold text-lg mb-2">Maximizing Value from Each Model Run</h3>
 						<ul className="list-disc list-inside space-y-1 text-slate-300 ml-4">
 							<li>Review and edit your resume before running AI - garbage in, garbage out</li>
 							<li>Provide complete job descriptions for better matching</li>

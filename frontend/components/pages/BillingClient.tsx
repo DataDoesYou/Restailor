@@ -147,7 +147,7 @@ export default function BillingClient({ initialBalance = null, initialTrial = nu
 	const onClaimTrial = useCallback(async () => {
 		try {
 			await api.post("/credits/claim-trial", {});
-			setAlert({ kind: "success", text: "Trial claimed. Your balance has been updated." });
+			setAlert({ kind: "success", text: "Budget balance updated." });
 			// Refresh balance
 			try {
 				const b = await api.get<Balance>("/users/me/balance");
@@ -161,7 +161,7 @@ export default function BillingClient({ initialBalance = null, initialTrial = nu
 			const err = e as ApiError;
 			let detail: string | undefined;
 			try { detail = typeof err.detail === "string" ? err.detail : (err.detail as any)?.detail; } catch {}
-			setAlert({ kind: "error", text: detail ? `Cannot claim: ${detail}` : "Could not claim free trial." });
+			setAlert({ kind: "error", text: detail ? `Cannot update Budget: ${detail}` : "Could not update Budget." });
 		}
 	}, []);
 
@@ -312,16 +312,16 @@ export default function BillingClient({ initialBalance = null, initialTrial = nu
 				<div className={{ info: "text-blue-400", success: "text-green-400", warning: "text-yellow-400", error: "text-red-400" }[alert.kind]}>{alert.text}</div>
 			)}
 
-			{/* Active trial info - show when user has trial balance but no purchased balance */}
+			{/* Legacy seeded balance info - show when existing restricted balance is present */}
 			{balance && (balance.trial_balance_cents ?? 0) > 0 && (balance.purchased_balance_cents ?? 0) === 0 && trial?.trial_models && trial.trial_models.length > 0 && (
 				<div className="bg-slate-800/50 border border-slate-700 rounded p-4">
-					<h2 className="text-lg font-semibold mb-2">Using Free Trial</h2>
+					<h2 className="text-lg font-semibold mb-2">Using Seeded Budget</h2>
 					<p className="text-sm text-slate-300">
-						You're currently using trial credits. Available models: {formatTrialModels(trial.trial_models)}
+						This Budget balance is limited to these models: {formatTrialModels(trial.trial_models)}
 					</p>
 					{trial.trial_duration_days && (
 						<p className="text-xs text-slate-400 mt-1">
-							Trial credits expire after {trial.trial_duration_days} days
+							This seeded Budget expires after {trial.trial_duration_days} days
 						</p>
 					)}
 					<p className="text-sm text-slate-400 mt-2">
