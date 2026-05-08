@@ -29,7 +29,7 @@ def test_budget_adjust_add_and_remove_clamps_and_writes_ledger():
 
     with SessionLocal() as s:
         user = s.query(User).filter(User.username == email).one()
-        rows = s.query(CreditLedger).filter(CreditLedger.user_id == user.id, CreditLedger.type == "budget_adjustment").all()
+        rows = s.query(CreditLedger).filter(CreditLedger.user_id == user.id, CreditLedger.note.like("budget_%")).all()
         assert len(rows) >= 2
         assert all(str(r.provider_ref or "").startswith(f"budget:self:{user.id}:") for r in rows)
 

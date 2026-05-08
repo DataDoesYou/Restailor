@@ -29,13 +29,12 @@ type Props = {
 	initialBalance?: Balance;
 	initialTrial?: Trial;
 	initialSummary?: Summary;
-	initialBudgetApiAvailable?: boolean;
 	initialIsAdmin?: boolean;
 	initialUseMyAvgs?: boolean;
 	initialUserAvgs?: Array<{ request_type?: string; model?: string; avg_price_usd?: string | number; n?: number }>;
 };
 
-export default function BillingClient({ initialBalance = null, initialTrial = null, initialSummary = null, initialBudgetApiAvailable = false, initialIsAdmin = false, initialUseMyAvgs = false, initialUserAvgs }: Props) {
+export default function BillingClient({ initialBalance = null, initialTrial = null, initialSummary = null, initialIsAdmin = false, initialUseMyAvgs = false, initialUserAvgs }: Props) {
 	const [balance, setBalance] = useState<Balance>(initialBalance);
 	const [trial, setTrial] = useState<Trial>(initialTrial);
 	const [summary, setSummary] = useState<Summary>(initialSummary);
@@ -50,7 +49,6 @@ export default function BillingClient({ initialBalance = null, initialTrial = nu
 	});
 	const [isAdmin, setIsAdmin] = useState<boolean>(Boolean(initialIsAdmin));
 	const [alert, setAlert] = useState<{ kind: "info" | "success" | "warning" | "error"; text: string } | null>(null);
-	const [budgetApiAvailable, setBudgetApiAvailable] = useState<boolean>(Boolean(initialBudgetApiAvailable));
 	const [authPending, setAuthPending] = useState<boolean>(true);
 	const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
 
@@ -59,7 +57,7 @@ export default function BillingClient({ initialBalance = null, initialTrial = nu
 		let cancelled = false;
 		(async () => {
 			const loadSummary = async () => {
-				return await api.get<Summary>("/billing/summary").catch(() => null);
+				return await api.get<Summary>("/budget/summary").catch(() => null);
 			};
 			try {
 				const [bal, tr, sum, me] = await Promise.all([
@@ -72,7 +70,6 @@ export default function BillingClient({ initialBalance = null, initialTrial = nu
 				if (bal) setBalance(bal);
 				if (tr) setTrial(tr);
 				if (sum) setSummary(sum);
-				setBudgetApiAvailable(Boolean(initialBudgetApiAvailable));
 				if (me) {
 					setIsAdmin(Boolean(me?.role === "admin"));
 					setIsLoggedIn(true);
@@ -171,23 +168,10 @@ export default function BillingClient({ initialBalance = null, initialTrial = nu
 	const amounts = [5, 10, 25, 50, 100];
 	const onAdjustBudget = useCallback(async (usd: number, direction: "add" | "remove") => {
 		try {
-			if (budgetApiAvailable) {
-				const data = await api.post<{ ok?: boolean; balance?: Balance }>("/budget/credits/adjust", { amount_usd: usd, direction });
-				if (data?.balance) {
-					setBalance(data.balance);
-					window.dispatchEvent(new CustomEvent("rt-balance", { detail: data.balance }));
-				}
-			} else {
-				const current = Math.max(0, Number(balance?.balance_cents || 0));
-				const cents = Math.round(Number(usd) * 100);
-				const nextCents = direction === "add" ? current + cents : Math.max(0, current - cents);
-				const nextBalance = {
-					...(balance || {}),
-					balance_cents: nextCents,
-					balance_usd: (nextCents / 100).toFixed(2),
-				};
-				setBalance(nextBalance);
-				window.dispatchEvent(new CustomEvent("rt-balance", { detail: nextBalance }));
+			const data = await api.post<{ ok?: boolean; balance?: Balance }>("/budget/credits/adjust", { amount_usd: usd, direction });
+			if (data?.balance) {
+				setBalance(data.balance);
+				window.dispatchEvent(new CustomEvent("rt-balance", { detail: data.balance }));
 			}
 			setAlert({ kind: "success", text: direction === "add" ? `Added $${usd} to your Budget.` : `Removed $${usd} from your Budget.` });
 		} catch (err) {
@@ -195,7 +179,7 @@ export default function BillingClient({ initialBalance = null, initialTrial = nu
 			const detail = typeof apiErr?.detail === "string" ? apiErr.detail : "Budget adjustment failed.";
 			setAlert({ kind: "error", text: detail });
 		}
-	}, [balance, budgetApiAvailable]);
+	}, []);
 
 	// Build global averages pivot: rows=request_type, cols=model, cells="$price (n)"
 	const avgTable = useMemo(() => {

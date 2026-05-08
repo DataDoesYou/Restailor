@@ -7255,19 +7255,29 @@ async def adjust_budget_credits(
         ledger = CreditLedger(
             user_id=user_id,
             delta_cents=int(delta),
-            type="budget_adjustment",
+            type="adjust",
             note=f"budget_{body.direction}",
             provider_ref=ref,
             is_test=bool(getattr(current_user, "is_test", False)),
         )
         db.add(ledger)
-        bal.balance_cents = max(0, int(getattr(bal, "balance_cents", 0) or 0) + int(delta))
+        bal.balance_cents = max(0, int(current_balance) + int(delta))
         db.commit()
     except Exception:
         db.rollback()
         raise
     cents = _fresh_balance_cents(db, user_id)
-    return {"ok": True, "balance": {"balance_cents": cents, "balance_usd": format_usd(cents), "currency": "USD"}}
+    breakdown = _get_balance_breakdown(db, user_id)
+    return {
+        "ok": True,
+        "balance": {
+            "balance_cents": cents,
+            "balance_usd": format_usd(cents),
+            "currency": "USD",
+            "purchased_balance_cents": breakdown["purchased_balance_cents"],
+            "trial_balance_cents": breakdown["trial_balance_cents"],
+        },
+    }
 
 
 class _ProviderKeyPutRequest(BaseModel):

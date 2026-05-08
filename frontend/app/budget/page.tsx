@@ -26,18 +26,12 @@ async function fetchJsonWithCookies(path: string): Promise<any | null> {
   }
 }
 
-async function fetchBudgetSummary(): Promise<{ summary: any | null; budgetApiAvailable: boolean }> {
-  const budgetSummary = await fetchJsonWithCookies("/budget/summary");
-  if (budgetSummary) return { summary: budgetSummary, budgetApiAvailable: true };
-  return { summary: await fetchJsonWithCookies("/billing/summary"), budgetApiAvailable: false };
-}
-
 export default async function Page() {
   const cookie = (await headers()).get("cookie") || "";
   const [balance, trial, budgetSummary, me] = await Promise.all([
     fetchJsonWithCookies("/users/me/balance"),
     fetchJsonWithCookies("/credits/trial-eligibility"),
-    fetchBudgetSummary(),
+    fetchJsonWithCookies("/budget/summary"),
     fetchJsonWithCookies("/users/me"),
   ]);
   const m = /(?:^|; )rt_use_my_avgs=([^;]+)/.exec(cookie);
@@ -47,8 +41,7 @@ export default async function Page() {
     <BillingClient
       initialBalance={balance}
       initialTrial={trial}
-      initialSummary={budgetSummary.summary}
-      initialBudgetApiAvailable={budgetSummary.budgetApiAvailable}
+      initialSummary={budgetSummary}
       initialIsAdmin={Boolean(me?.role === "admin")}
       initialUseMyAvgs={initialUseMyAvgs}
       initialUserAvgs={Array.isArray(initialUserAvgs) ? initialUserAvgs : undefined}
